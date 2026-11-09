@@ -9,8 +9,6 @@
   <a href="https://github.com/marekmiklusek/laravel-slack-errors/blob/main/LICENSE.md"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License"></a>
 </p>
 
-🚨 **Every reported exception from your Laravel app, straight to your Slack channel.**
-
 Install the package, add a webhook URL to `.env` and you are done. No changes to
 `bootstrap/app.php`, no custom exception handler.
 
