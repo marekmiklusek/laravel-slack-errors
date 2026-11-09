@@ -1,0 +1,99 @@
+<?php
+
+declare(strict_types=1);
+
+use MarekMiklusek\SlackErrors\MessageBuilder;
+
+function messageException(string $message = 'Order <42> & co'): RuntimeException
+{
+    return new RuntimeException($message);
+}
+
+function nestedMessageException(int $depth): RuntimeException
+{
+    return $depth === 0 ? new RuntimeException('Deep') : nestedMessageException($depth - 1);
+}
+
+/**
+ * @return array{text: string, blocks: list<array<string, mixed>>}
+ */
+function buildMessage(Throwable $exception): array
+{
+    return app(MessageBuilder::class)->build($exception);
+}
+
+it('builds the fallback text and header', function (): void {
+    config(['app.name' => 'Shop']);
+
+    $payload = buildMessage(messageException());
+
+    expect($payload['text'])->toBe('Shop: RuntimeException: Order &lt;42&gt; &amp; co')
+        ->and($payload['blocks'][0])->toBe([
+            'type' => 'header',
+            'text' => ['type' => 'plain_text', 'text' => '🚨 Shop', 'emoji' => true],
+        ]);
+});
+
+it('falls back to a default app name', function (): void {
+    config(['app.name' => null]);
+
+    expect(data_get(buildMessage(messageException()), 'blocks.0.text.text'))->toBe('🚨 Laravel');
+});
+
+it('describes the exception with escaped mrkdwn', function (): void {
+    expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))
+        ->toBe("*RuntimeException*\nOrder &lt;42&gt; &amp; co");
+});
+
+it('prepends the configured mention', function (): void {
+    config(['slack-errors.mention' => '<!channel>']);
+
+    $payload = buildMessage(messageException());
+
+    expect($payload['text'])->toStartWith('<!channel> ')
+        ->and(data_get($payload, 'blocks.1.text.text'))->toStartWith('<!channel> *RuntimeException*');
+});
+
+it('handles exceptions without a message', function (): void {
+    expect(data_get(buildMessage(messageException('')), 'blocks.1.text.text'))
+        ->toBe("*RuntimeException*\n(no message)");
+});
+
+it('truncates long messages', function (): void {
+    $text = data_get(buildMessage(messageException(str_repeat('a', 2000))), 'blocks.1.text.text');
+
+    assert(is_string($text));
+
+    expect(mb_strlen($text))->toBeLessThan(600);
+});
+
+it('lists the location and the context as fields', function (): void {
+    $fields = data_get(buildMessage(messageException()), 'blocks.2.fields');
+
+    expect($fields)->toBeArray()
+        ->and(data_get($fields, '0.text'))->toStartWith("*Location*\n`")
+        ->toContain('MessageBuilderTest.php:')
+        ->and(data_get($fields, '1.text'))->toBe("*Environment*\ntesting");
+});
+
+it('shows paths relative to the application base path', function (): void {
+    app()->setBasePath(dirname(__DIR__, 2));
+
+    expect(data_get(buildMessage(messageException()), 'blocks.2.fields.0.text'))
+        ->toStartWith("*Location*\n`tests/Feature/MessageBuilderTest.php:");
+});
+
+it('adds at most ten application frames of the stack trace', function (): void {
+    $trace = data_get(buildMessage(nestedMessageException(15)), 'blocks.3.text.text');
+
+    assert(is_string($trace));
+
+    expect($trace)
+        ->toStartWith("```\n")
+        ->toContain('nestedMessageException()')
+        ->and(explode("\n", $trace))->toHaveCount(12);
+});
+
+it('omits the stack trace when it only contains vendor frames', function (): void {
+    expect(buildMessage(new RuntimeException('Vendor only'))['blocks'])->toHaveCount(3);
+});
