@@ -1,5 +1,3 @@
-!!! WORK IN PROGRESS !!!
-
 <p align="center">
   <img src="https://raw.githubusercontent.com/marekmiklusek/laravel-slack-errors/main/art/banner.svg" alt="Laravel Slack Errors" width="100%">
 </p>
