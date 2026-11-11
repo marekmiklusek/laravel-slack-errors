@@ -17,6 +17,8 @@ final readonly class MessageBuilder
 
     private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
 
+    private const string COLOR = '#E01E5A';
+
     public function __construct(
         private Application $app,
         private Repository $config,
@@ -24,7 +26,7 @@ final readonly class MessageBuilder
     ) {}
 
     /**
-     * @return array{text: string, blocks: list<array<string, mixed>>}
+     * @return array{text?: string, attachments: list<array{color: string, fallback: string, blocks: list<array<string, mixed>>}>}
      */
     public function build(Throwable $exception): array
     {
@@ -33,13 +35,12 @@ final readonly class MessageBuilder
         $mention = $this->mention();
 
         $blocks = [
-            ['type' => 'divider'],
             [
                 'type' => 'header',
                 'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->title(), 140), 'emoji' => true],
             ],
             $this->section(
-                mb_ltrim($mention.' *'.$this->escape($class).'*')
+                '*'.$this->escape($class).'*'
                 ."\n\n".$this->escape($message)
                 ."\n\n`".$this->escape($this->location($exception)).'`',
             ),
@@ -57,10 +58,15 @@ final readonly class MessageBuilder
             $blocks[] = $this->section("```\n".$this->escape($trace)."\n```");
         }
 
-        return [
-            'text' => mb_ltrim($mention.' '.$this->escape(Str::limit($this->title().': '.$class.': '.$message, 300))),
-            'blocks' => $blocks,
-        ];
+        $fallback = $this->escape(Str::limit($this->title().': '.$class.': '.$message, 300));
+
+        $payload = ['attachments' => [['color' => self::COLOR, 'fallback' => $fallback, 'blocks' => $blocks]]];
+
+        if ($mention !== '') {
+            $payload['text'] = $mention.' '.$fallback;
+        }
+
+        return $payload;
     }
 
     /**

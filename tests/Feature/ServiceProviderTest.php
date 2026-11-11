@@ -46,7 +46,45 @@ it('sends exceptions reported through the framework handler to slack', function 
         && str_contains($request->body(), 'Boom from the handler'));
 });
 
-it('does not hook into custom exception handlers', function (): void {
+it('hooks into decorated exception handlers that forward reportable callbacks', function (): void {
+    Http::fake();
+
+    app()->singleton(ExceptionHandler::class, fn (): ExceptionHandler => new class implements ExceptionHandler
+    {
+        /** @var list<callable> */
+        private array $callbacks = [];
+
+        public function reportable(callable $reportUsing): void
+        {
+            $this->callbacks[] = $reportUsing;
+        }
+
+        public function report(Throwable $e): void
+        {
+            foreach ($this->callbacks as $callback) {
+                $callback($e);
+            }
+        }
+
+        public function shouldReport(Throwable $e): bool
+        {
+            return true;
+        }
+
+        public function render(mixed $request, Throwable $e): Response
+        {
+            return new Response;
+        }
+
+        public function renderForConsole(mixed $output, Throwable $e): void {}
+    });
+
+    app(ExceptionHandler::class)->report(new RuntimeException('Decorated handler'));
+
+    Http::assertSent(fn (Request $request): bool => str_contains($request->body(), 'Decorated handler'));
+});
+
+it('does not hook into exception handlers without reportable callbacks', function (): void {
     Http::fake();
 
     app()->singleton(ExceptionHandler::class, fn (): ExceptionHandler => new class implements ExceptionHandler

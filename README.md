@@ -90,7 +90,7 @@ Exceptions listed in your application's `dontReport` are never sent either.
 | Exception | Class and message |
 | Location | File and line, relative to the project root |
 | URL | HTTP method and URL for web requests, without the query string |
-| Command, Job | The artisan command, and the job class inside queue workers |
+| Command, Job | The artisan command, or the job class inside queue workers |
 | User | ID of the authenticated user, if the request already loaded one |
 | Stack trace | Up to 10 frames from your own code, vendor and entry points skipped |
 

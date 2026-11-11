@@ -15,7 +15,7 @@ function nestedMessageException(int $depth): RuntimeException
 }
 
 /**
- * @return array{text: string, blocks: list<array<string, mixed>>}
+ * @return array{text?: string, attachments: list<array{color: string, fallback: string, blocks: list<array<string, mixed>>}>}
  */
 function buildMessage(Throwable $exception): array
 {
@@ -27,8 +27,9 @@ it('builds the fallback text and header', function (): void {
 
     $payload = buildMessage(messageException());
 
-    expect($payload['text'])->toBe('Shop | testing: RuntimeException: Order &lt;42&gt; &amp; co')
-        ->and($payload['blocks'][1])->toBe([
+    expect($payload)->not->toHaveKey('text')
+        ->and($payload['attachments'][0]['fallback'])->toBe('Shop | testing: RuntimeException: Order &lt;42&gt; &amp; co')
+        ->and($payload['attachments'][0]['blocks'][0])->toBe([
             'type' => 'header',
             'text' => ['type' => 'plain_text', 'text' => '🚨 Shop | testing', 'emoji' => true],
         ]);
@@ -37,17 +38,17 @@ it('builds the fallback text and header', function (): void {
 it('falls back to a default app name', function (): void {
     config(['app.name' => null]);
 
-    expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))->toBe('🚨 Laravel | testing');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🚨 Laravel | testing');
 });
 
 it('leaves the environment out of the header when it is unknown', function (): void {
     config(['app.name' => 'Shop', 'app.env' => null]);
 
-    expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))->toBe('🚨 Shop');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🚨 Shop');
 });
 
 it('describes the exception with escaped mrkdwn', function (): void {
-    expect(data_get(buildMessage(messageException()), 'blocks.2.text.text'))
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.1.text.text'))
         ->toStartWith("*RuntimeException*\n\nOrder &lt;42&gt; &amp; co\n\n`");
 });
 
@@ -56,17 +57,17 @@ it('prepends the configured mention', function (): void {
 
     $payload = buildMessage(messageException());
 
-    expect($payload['text'])->toStartWith('<!channel> ')
-        ->and(data_get($payload, 'blocks.2.text.text'))->toStartWith('<!channel> *RuntimeException*');
+    expect(data_get($payload, 'text'))->toBe('<!channel> Laravel | testing: RuntimeException: Order &lt;42&gt; &amp; co')
+        ->and(data_get($payload, 'attachments.0.blocks.1.text.text'))->toStartWith('*RuntimeException*');
 });
 
 it('handles exceptions without a message', function (): void {
-    expect(data_get(buildMessage(messageException('')), 'blocks.2.text.text'))
+    expect(data_get(buildMessage(messageException('')), 'attachments.0.blocks.1.text.text'))
         ->toStartWith("*RuntimeException*\n\n(no message)\n\n`");
 });
 
 it('truncates long messages', function (): void {
-    $text = data_get(buildMessage(messageException(str_repeat('a', 2000))), 'blocks.2.text.text');
+    $text = data_get(buildMessage(messageException(str_repeat('a', 2000))), 'attachments.0.blocks.1.text.text');
 
     assert(is_string($text));
 
@@ -74,7 +75,7 @@ it('truncates long messages', function (): void {
 });
 
 it('shows the location on its own line under the exception', function (): void {
-    $text = data_get(buildMessage(messageException()), 'blocks.2.text.text');
+    $text = data_get(buildMessage(messageException()), 'attachments.0.blocks.1.text.text');
 
     assert(is_string($text));
 
@@ -84,20 +85,20 @@ it('shows the location on its own line under the exception', function (): void {
 });
 
 it('lists the context as fields', function (): void {
-    expect(data_get(buildMessage(messageException()), 'blocks.3.fields.0.text'))->toStartWith("*Command*\n");
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.2.fields.0.text'))->toStartWith("*Command*\n");
 });
 
 it('shows paths relative to the application base path', function (): void {
     app()->setBasePath(dirname(__DIR__, 2));
 
-    expect(data_get(buildMessage(messageException()), 'blocks.2.text.text'))
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.1.text.text'))
         ->toContain("\n`tests/Feature/MessageBuilderTest.php:");
 });
 
 it('adds at most ten application frames of the stack trace', function (): void {
     app()->setBasePath(dirname(__DIR__, 2));
 
-    $trace = data_get(buildMessage(nestedMessageException(15)), 'blocks.4.text.text');
+    $trace = data_get(buildMessage(nestedMessageException(15)), 'attachments.0.blocks.3.text.text');
 
     assert(is_string($trace));
 
@@ -108,9 +109,13 @@ it('adds at most ten application frames of the stack trace', function (): void {
 });
 
 it('omits the stack trace without frames from the project', function (): void {
-    expect(buildMessage(new RuntimeException('Vendor only'))['blocks'])->toHaveCount(4);
+    expect(buildMessage(new RuntimeException('Vendor only'))['attachments'][0]['blocks'])->toHaveCount(3);
 });
 
-it('starts every message with a divider', function (): void {
-    expect(buildMessage(messageException())['blocks'][0])->toBe(['type' => 'divider']);
+it('wraps the blocks in a colored attachment', function (): void {
+    $payload = buildMessage(messageException());
+
+    expect($payload)->not->toHaveKey('blocks')
+        ->and($payload['attachments'])->toHaveCount(1)
+        ->and($payload['attachments'][0]['color'])->toBe('#E01E5A');
 });

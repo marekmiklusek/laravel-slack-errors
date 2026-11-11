@@ -9,7 +9,6 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Contracts\Events\Dispatcher;
-use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use MarekMiklusek\SlackErrors\Console\SendTestNotificationCommand;
 
@@ -36,7 +35,7 @@ final class SlackErrorsServiceProvider extends ServiceProvider
         $this->trackQueueJobs();
 
         $this->callAfterResolving(ExceptionHandler::class, function (ExceptionHandler $handler): void {
-            if (! $handler instanceof Handler) {
+            if (! method_exists($handler, 'reportable')) {
                 return;
             }
 

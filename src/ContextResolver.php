@@ -33,10 +33,9 @@ final readonly class ContextResolver
     private function origin(): array
     {
         if ($this->app->runningInConsole()) {
-            return [
-                'Command' => $this->command(),
-                'Job' => $this->job->name(),
-            ];
+            $job = $this->job->name();
+
+            return $job !== null ? ['Job' => $job] : ['Command' => $this->command()];
         }
 
         $request = $this->app->make(Request::class);

@@ -57,7 +57,7 @@ it('names the queue job being processed', function (): void {
     $job = new CurrentJob;
     $job->set('App\Jobs\SyncOrders');
 
-    expect(resolveContext(contextApp(), $job))->toHaveKey('Job', 'App\Jobs\SyncOrders');
+    expect(resolveContext(contextApp(), $job))->toBe(['Job' => 'App\Jobs\SyncOrders']);
 });
 
 it('skips the command when argv is unavailable', function (): void {
