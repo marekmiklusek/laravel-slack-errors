@@ -17,7 +17,7 @@ final readonly class MessageBuilder
 
     private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
 
-    private const string COLOR = '#E01E5A';
+    private const string COLOR = '#ECB22E';
 
     public function __construct(
         private Application $app,
@@ -37,7 +37,7 @@ final readonly class MessageBuilder
         $blocks = [
             [
                 'type' => 'header',
-                'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->title(), 140), 'emoji' => true],
+                'text' => ['type' => 'plain_text', 'text' => Str::limit('🪲 '.$this->title(), 140), 'emoji' => true],
             ],
             $this->section(
                 '*'.$this->escape($class).'*'

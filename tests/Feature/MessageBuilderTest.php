@@ -31,20 +31,20 @@ it('builds the fallback text and header', function (): void {
         ->and($payload['attachments'][0]['fallback'])->toBe('Shop | testing: RuntimeException: Order &lt;42&gt; &amp; co')
         ->and($payload['attachments'][0]['blocks'][0])->toBe([
             'type' => 'header',
-            'text' => ['type' => 'plain_text', 'text' => '🚨 Shop | testing', 'emoji' => true],
+            'text' => ['type' => 'plain_text', 'text' => '🪲 Shop | testing', 'emoji' => true],
         ]);
 });
 
 it('falls back to a default app name', function (): void {
     config(['app.name' => null]);
 
-    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🚨 Laravel | testing');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Laravel | testing');
 });
 
 it('leaves the environment out of the header when it is unknown', function (): void {
     config(['app.name' => 'Shop', 'app.env' => null]);
 
-    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🚨 Shop');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Shop');
 });
 
 it('describes the exception with escaped mrkdwn', function (): void {
@@ -117,5 +117,5 @@ it('wraps the blocks in a colored attachment', function (): void {
 
     expect($payload)->not->toHaveKey('blocks')
         ->and($payload['attachments'])->toHaveCount(1)
-        ->and($payload['attachments'][0]['color'])->toBe('#E01E5A');
+        ->and($payload['attachments'][0]['color'])->toBe('#ECB22E');
 });
