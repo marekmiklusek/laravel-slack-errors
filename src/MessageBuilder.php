@@ -39,8 +39,8 @@ final readonly class MessageBuilder
             ],
             $this->section(
                 mb_ltrim($mention.' *'.$this->escape($class).'*')
-                ."\n".$this->escape($message)
-                ."\n`".$this->escape($this->location($exception)).'`',
+                ."\n\n".$this->escape($message)
+                ."\n\n`".$this->escape($this->location($exception)).'`',
             ),
         ];
 

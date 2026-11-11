@@ -48,7 +48,7 @@ it('leaves the environment out of the header when it is unknown', function (): v
 
 it('describes the exception with escaped mrkdwn', function (): void {
     expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))
-        ->toStartWith("*RuntimeException*\nOrder &lt;42&gt; &amp; co\n`");
+        ->toStartWith("*RuntimeException*\n\nOrder &lt;42&gt; &amp; co\n\n`");
 });
 
 it('prepends the configured mention', function (): void {
@@ -62,7 +62,7 @@ it('prepends the configured mention', function (): void {
 
 it('handles exceptions without a message', function (): void {
     expect(data_get(buildMessage(messageException('')), 'blocks.1.text.text'))
-        ->toStartWith("*RuntimeException*\n(no message)\n`");
+        ->toStartWith("*RuntimeException*\n\n(no message)\n\n`");
 });
 
 it('truncates long messages', function (): void {
@@ -70,7 +70,7 @@ it('truncates long messages', function (): void {
 
     assert(is_string($text));
 
-    expect(mb_strlen(explode("\n", $text)[1]))->toBeLessThanOrEqual(503);
+    expect(mb_strlen(explode("\n", $text)[2]))->toBeLessThanOrEqual(503);
 });
 
 it('shows the location on its own line under the exception', function (): void {
@@ -78,7 +78,7 @@ it('shows the location on its own line under the exception', function (): void {
 
     assert(is_string($text));
 
-    expect(explode("\n", $text)[2])->toStartWith('`')
+    expect(explode("\n", $text)[4])->toStartWith('`')
         ->toContain('MessageBuilderTest.php:')
         ->toEndWith('`');
 });
