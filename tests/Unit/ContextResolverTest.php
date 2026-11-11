@@ -8,6 +8,7 @@ use Illuminate\Auth\RequestGuard;
 use Illuminate\Config\Repository;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Foundation\Application;
+use MarekMiklusek\SlackErrors\CurrentJob;
 use MarekMiklusek\SlackErrors\ContextResolver;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 
@@ -19,9 +20,9 @@ function contextApp(): Application
 /**
  * @return array<string, string>
  */
-function resolveContext(Application $app): array
+function resolveContext(Application $app, ?CurrentJob $job = null): array
 {
-    return new ContextResolver($app, new Repository(['app' => ['env' => 'production']]))->resolve();
+    return new ContextResolver($app, new Repository(['app' => ['env' => 'production']]), $job ?? new CurrentJob)->resolve();
 }
 
 function authWithGuard(Guard $guard): AuthFactory
@@ -52,7 +53,14 @@ it('describes a console command', function (): void {
     expect($context)
         ->toMatchArray(['Environment' => 'production', 'Command' => 'artisan orders:sync --force'])
         ->toHaveKey('Host')
-        ->not->toHaveKeys(['URL', 'IP', 'User']);
+        ->not->toHaveKeys(['URL', 'IP', 'User', 'Job']);
+});
+
+it('names the queue job being processed', function (): void {
+    $job = new CurrentJob;
+    $job->set('App\Jobs\SyncOrders');
+
+    expect(resolveContext(contextApp(), $job))->toHaveKey('Job', 'App\Jobs\SyncOrders');
 });
 
 it('skips the command when argv is unavailable', function (): void {

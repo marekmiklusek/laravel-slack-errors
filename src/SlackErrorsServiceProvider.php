@@ -6,8 +6,12 @@ namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Queue\Events\JobProcessed;
+use Illuminate\Queue\Events\JobProcessing;
+use Illuminate\Contracts\Events\Dispatcher;
 use Illuminate\Foundation\Exceptions\Handler;
 use Illuminate\Contracts\Debug\ExceptionHandler;
+use MarekMiklusek\SlackErrors\Console\SendTestNotificationCommand;
 
 final class SlackErrorsServiceProvider extends ServiceProvider
 {
@@ -16,6 +20,7 @@ final class SlackErrorsServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(__DIR__.'/../config/slack-errors.php', 'slack-errors');
 
         $this->app->singleton(ErrorReporter::class);
+        $this->app->singleton(CurrentJob::class);
     }
 
     public function boot(): void
@@ -23,6 +28,12 @@ final class SlackErrorsServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__.'/../config/slack-errors.php' => $this->app->configPath('slack-errors.php'),
         ], 'slack-errors-config');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([SendTestNotificationCommand::class]);
+        }
+
+        $this->trackQueueJobs();
 
         $this->callAfterResolving(ExceptionHandler::class, function (ExceptionHandler $handler): void {
             if (! $handler instanceof Handler) {
@@ -32,6 +43,19 @@ final class SlackErrorsServiceProvider extends ServiceProvider
             $handler->reportable(function (Throwable $exception): void {
                 $this->app->make(ErrorReporter::class)->report($exception);
             });
+        });
+    }
+
+    private function trackQueueJobs(): void
+    {
+        $events = $this->app->make(Dispatcher::class);
+
+        $events->listen(JobProcessing::class, function (JobProcessing $event): void {
+            $this->app->make(CurrentJob::class)->set($event->job->resolveName());
+        });
+
+        $events->listen(JobProcessed::class, function (): void {
+            $this->app->make(CurrentJob::class)->set(null);
         });
     }
 }

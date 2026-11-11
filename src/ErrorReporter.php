@@ -17,6 +17,7 @@ final class ErrorReporter
         private readonly Repository $config,
         private readonly MessageBuilder $builder,
         private readonly SlackWebhook $webhook,
+        private readonly Throttle $throttle,
     ) {}
 
     public function report(Throwable $exception): void
@@ -30,7 +31,9 @@ final class ErrorReporter
         $this->reporting = true;
 
         try {
-            $this->webhook->send($webhookUrl, $this->builder->build($exception));
+            if ($this->throttle->attempt($exception)) {
+                $this->webhook->send($webhookUrl, $this->builder->build($exception));
+            }
         } catch (Throwable) {
             //
         } finally {

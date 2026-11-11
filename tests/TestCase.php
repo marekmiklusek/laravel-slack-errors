@@ -41,6 +41,7 @@ abstract class TestCase extends Orchestra
             'slack-errors.webhook_url' => self::WEBHOOK_URL,
             'slack-errors.environments' => ['testing'],
             'logging.default' => 'null',
+            'cache.default' => 'array',
         ]);
     }
 }

@@ -3,9 +3,13 @@
 declare(strict_types=1);
 
 use Tests\TestCase;
+use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Queue\Events\JobProcessed;
+use MarekMiklusek\SlackErrors\CurrentJob;
+use Illuminate\Queue\Events\JobProcessing;
 use MarekMiklusek\SlackErrors\ErrorReporter;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Contracts\Debug\ExceptionHandler;
@@ -20,6 +24,7 @@ it('merges the package configuration', function (): void {
     expect(config('slack-errors.enabled'))->toBeTrue()
         ->and(config('slack-errors.timeout'))->toBe(3)
         ->and(config('slack-errors.mention'))->toBe('')
+        ->and(config('slack-errors.throttle'))->toBe(10)
         ->and(config('slack-errors.ignore'))->toBe([]);
 });
 
@@ -64,4 +69,20 @@ it('does not hook into custom exception handlers', function (): void {
     app(ExceptionHandler::class)->report(new RuntimeException('Custom handler'));
 
     Http::assertNothingSent();
+});
+
+it('tracks the queue job being processed', function (): void {
+    $job = new SyncJob(app(), json_encode([
+        'displayName' => 'App\Jobs\SyncOrders',
+        'job' => 'Illuminate\Queue\CallQueuedHandler@call',
+        'data' => [],
+    ], JSON_THROW_ON_ERROR), 'sync', 'default');
+
+    event(new JobProcessing('sync', $job));
+
+    expect(app(CurrentJob::class)->name())->toBe('App\Jobs\SyncOrders');
+
+    event(new JobProcessed('sync', $job));
+
+    expect(app(CurrentJob::class)->name())->toBeNull();
 });

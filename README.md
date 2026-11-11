@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/marekmiklusek/laravel-slack-errors/main/art/banner.svg" alt="Laravel Slack Errors" width="100%">
+  <img src="art/banner.svg" alt="Laravel Slack Errors" width="100%">
 </p>
 
 <p align="center">
@@ -15,11 +15,13 @@ Install the package, add a webhook URL to `.env` and you are done. No changes to
 ## Features
 
 - ⚡ **Zero config**: hooks into the framework exception handler automatically
-- 🧱 **Block Kit messages**: exception, location, URL or command, user and stack trace
+- 🧱 **Block Kit messages**: exception, location, URL, command or queue job, user and stack trace
+- 🔁 **Throttling**: the same exception is sent once per 10 minutes, so a loop never floods the channel
 - 🌍 **Environment filter** with wildcard support, `production` only by default
 - 🙈 **Ignore list** on top of your application's own `dontReport`
 - 🛡️ **Fail-safe**: a failing Slack call never breaks or re-enters your error handling
 - 🔍 **No side effects**: the user is reported only if the app already loaded it, no extra queries
+- 🧪 **Test command**: `php artisan slack-errors:test` checks the webhook in one step
 
 ## Requirements
 
@@ -39,6 +41,15 @@ Slack app, pick the channel and add the URL to `.env`:
 SLACK_ERRORS_WEBHOOK_URL=https://hooks.slack.com/services/...
 ```
 
+Check the setup:
+
+```bash
+php artisan slack-errors:test
+```
+
+The command sends a test message regardless of the environment filter and prints
+Slack's error if the webhook does not work.
+
 That's it. Every exception your application reports in `production` now lands in
 the channel.
 
@@ -53,6 +64,8 @@ Everything is configurable through `.env`:
 | `SLACK_ERRORS_ENVIRONMENTS` | `production` | Comma separated environments, wildcards allowed (`*` for all). |
 | `SLACK_ERRORS_MENTION` | | Prepended to every message, e.g. `<!channel>`, `<!here>` or `<@U012AB3CD>`. |
 | `SLACK_ERRORS_TIMEOUT` | `3` | Seconds to wait for Slack. |
+| `SLACK_ERRORS_THROTTLE` | `10` | Minutes during which the same exception is sent only once. `0` disables it. |
+| `SLACK_ERRORS_CACHE_STORE` | default store | Cache store used by the throttle. |
 
 To ignore specific exception classes (subclasses included), publish the config:
 
@@ -78,7 +91,7 @@ Exceptions listed in your application's `dontReport` are never sent either.
 | Location | File and line, relative to the project root |
 | Environment, Host | `APP_ENV` and server hostname |
 | URL, IP | HTTP method, full URL and client IP for web requests |
-| Command | The artisan command for console and queue processes |
+| Command, Job | The artisan command, and the job class inside queue workers |
 | User | ID of the authenticated user, if the request already loaded one |
 | Stack trace | Up to 10 application frames, vendor frames skipped |
 
@@ -90,6 +103,9 @@ Exceptions listed in your application's `dontReport` are never sent either.
 - The message is sent synchronously with a short timeout. Queues are not used on
   purpose: when something breaks, the queue or Redis is often part of the
   problem.
+- Repeats of the same exception (class, file and line) are held back for the
+  throttle window. The message is left out on purpose, so IDs in it do not bypass
+  the throttle. If the cache is unavailable, the notification is sent anyway.
 - Any failure while talking to Slack is swallowed, and an exception thrown while
   a report is in progress is not reported again.
 

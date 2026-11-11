@@ -15,6 +15,7 @@ final readonly class ContextResolver
     public function __construct(
         private Application $app,
         private Repository $config,
+        private CurrentJob $job,
     ) {}
 
     /**
@@ -43,7 +44,10 @@ final readonly class ContextResolver
     private function origin(): array
     {
         if ($this->app->runningInConsole()) {
-            return ['Command' => $this->command()];
+            return [
+                'Command' => $this->command(),
+                'Job' => $this->job->name(),
+            ];
         }
 
         $request = $this->app->make(Request::class);

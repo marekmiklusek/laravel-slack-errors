@@ -7,6 +7,11 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use MarekMiklusek\SlackErrors\ErrorReporter;
 
+function repeatedException(): RuntimeException
+{
+    return new RuntimeException('Repeated failure');
+}
+
 it('sends the exception to the configured webhook', function (): void {
     Http::fake();
 
@@ -84,6 +89,15 @@ it('does not report again while a report is in progress', function (): void {
     });
 
     app(ErrorReporter::class)->report(new RuntimeException('Outer'));
+
+    Http::assertSentCount(1);
+});
+
+it('sends the same exception only once within the throttle window', function (): void {
+    Http::fake();
+
+    app(ErrorReporter::class)->report(repeatedException());
+    app(ErrorReporter::class)->report(repeatedException());
 
     Http::assertSentCount(1);
 });

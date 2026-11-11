@@ -68,6 +68,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Throttle
+    |--------------------------------------------------------------------------
+    |
+    | Minutes during which the same exception (class, file and line) is sent
+    | only once, so an error in a loop never floods the channel. 0 disables it.
+    |
+    */
+
+    'throttle' => (int) env('SLACK_ERRORS_THROTTLE', 10),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Cache Store
+    |--------------------------------------------------------------------------
+    |
+    | Cache store used by the throttle. Null uses the default store.
+    |
+    */
+
+    'cache_store' => env('SLACK_ERRORS_CACHE_STORE'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Ignored Exceptions
     |--------------------------------------------------------------------------
     |
