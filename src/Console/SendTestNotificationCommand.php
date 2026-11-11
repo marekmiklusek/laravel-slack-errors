@@ -8,8 +8,8 @@ use Throwable;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Config\Repository;
 use MarekMiklusek\SlackErrors\SlackWebhook;
-use MarekMiklusek\SlackErrors\MessageBuilder;
 use Illuminate\Console\Attributes\Signature;
+use MarekMiklusek\SlackErrors\MessageBuilder;
 use Illuminate\Console\Attributes\Description;
 use MarekMiklusek\SlackErrors\Exceptions\TestNotificationException;
 
