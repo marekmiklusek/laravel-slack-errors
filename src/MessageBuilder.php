@@ -33,6 +33,7 @@ final readonly class MessageBuilder
         $mention = $this->mention();
 
         $blocks = [
+            ['type' => 'divider'],
             [
                 'type' => 'header',
                 'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->title(), 140), 'emoji' => true],
