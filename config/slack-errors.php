@@ -25,7 +25,7 @@ return [
     |
     */
 
-    'webhook_url' => env('SLACK_ERRORS_WEBHOOK_URL'),
+    'webhook_url' => (string) env('SLACK_ERRORS_WEBHOOK_URL', ''),
 
     /*
     |--------------------------------------------------------------------------
@@ -52,7 +52,7 @@ return [
     |
     */
 
-    'mention' => env('SLACK_ERRORS_MENTION', ''),
+    'mention' => (string) env('SLACK_ERRORS_MENTION', ''),
 
     /*
     |--------------------------------------------------------------------------
@@ -94,11 +94,13 @@ return [
     | Cache Store
     |--------------------------------------------------------------------------
     |
-    | Cache store used by the throttle. Null uses the default store.
+    | Cache store used by the throttle. The local "file" store keeps working
+    | when Redis or the database is down, which is exactly when errors pile
+    | up. An empty value uses the application's default store.
     |
     */
 
-    'cache_store' => env('SLACK_ERRORS_CACHE_STORE'),
+    'cache_store' => (string) env('SLACK_ERRORS_CACHE_STORE', 'file'),
 
     /*
     |--------------------------------------------------------------------------

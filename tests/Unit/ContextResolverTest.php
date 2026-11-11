@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Http\Request;
+use Illuminate\Routing\Route;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Auth\RequestGuard;
 use Illuminate\Contracts\Auth\Guard;
@@ -41,7 +42,7 @@ function authWithGuard(Guard $guard): AuthFactory
 
 it('describes a console command', function (): void {
     $argv = $_SERVER['argv'] ?? null;
-    $_SERVER['argv'] = ['artisan', 'orders:sync', '--force'];
+    $_SERVER['argv'] = ['artisan', 'user:create', 'marek@example.com', '--password=secret'];
 
     try {
         $context = resolveContext(contextApp());
@@ -49,8 +50,7 @@ it('describes a console command', function (): void {
         $_SERVER['argv'] = $argv;
     }
 
-    expect($context)
-        ->toBe(['Command' => 'artisan orders:sync --force']);
+    expect($context)->toBe(['Command' => 'artisan user:create']);
 });
 
 it('names the queue job being processed', function (): void {
@@ -86,6 +86,24 @@ it('describes an http request', function (): void {
     }
 
     expect($context)->toBe(['URL' => 'POST https://shop.test/checkout']);
+});
+
+it('shows the route template instead of the real path', function (): void {
+    $_SERVER['APP_RUNNING_IN_CONSOLE'] = 'false';
+
+    try {
+        $request = Request::create('https://shop.test/reset-password/secret-token?email=marek@example.com', 'POST');
+        $request->setRouteResolver(fn (): Route => new Route(['POST'], 'reset-password/{token}', fn (): null => null));
+
+        $app = contextApp();
+        $app->instance(Request::class, $request);
+
+        $context = resolveContext($app);
+    } finally {
+        unset($_SERVER['APP_RUNNING_IN_CONSOLE']);
+    }
+
+    expect($context)->toBe(['URL' => 'POST https://shop.test/reset-password/{token}']);
 });
 
 it('includes the user the application already loaded', function (): void {

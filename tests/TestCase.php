@@ -42,6 +42,7 @@ abstract class TestCase extends Orchestra
             'slack-errors.environments' => ['testing'],
             'logging.default' => 'null',
             'cache.default' => 'array',
+            'slack-errors.cache_store' => 'array',
         ]);
     }
 }

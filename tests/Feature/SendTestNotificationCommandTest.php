@@ -20,7 +20,7 @@ it('sends a test notification regardless of the environment filter', function ()
 
 it('fails without a webhook url', function (): void {
     Http::fake();
-    config(['slack-errors.webhook_url' => null]);
+    config(['slack-errors.webhook_url' => '']);
 
     expect(Artisan::call('slack-errors:test'))->toBe(1)
         ->and(Artisan::output())->toContain('SLACK_ERRORS_WEBHOOK_URL');
@@ -33,4 +33,12 @@ it('shows why slack rejected the notification', function (): void {
 
     expect(Artisan::call('slack-errors:test'))->toBe(1)
         ->and(Artisan::output())->toContain('Slack did not accept the notification');
+});
+
+it('never prints the webhook url', function (): void {
+    Http::fake(['*' => Http::response('no_service for '.TestCase::WEBHOOK_URL, 404)]);
+
+    expect(Artisan::call('slack-errors:test'))->toBe(1)
+        ->and(Artisan::output())->toContain('***')
+        ->not->toContain(TestCase::WEBHOOK_URL);
 });

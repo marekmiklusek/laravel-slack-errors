@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobProcessed;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Contracts\Events\Dispatcher;
+use Illuminate\Queue\Events\WorkerStopping;
 use Illuminate\Contracts\Debug\ExceptionHandler;
 use MarekMiklusek\SlackErrors\Console\SendTestNotificationCommand;
 
@@ -53,7 +55,7 @@ final class SlackErrorsServiceProvider extends ServiceProvider
             $this->app->make(CurrentJob::class)->set($event->job->resolveName());
         });
 
-        $events->listen(JobProcessed::class, function (): void {
+        $events->listen([JobProcessed::class, Looping::class, WorkerStopping::class], function (): void {
             $this->app->make(CurrentJob::class)->set(null);
         });
     }

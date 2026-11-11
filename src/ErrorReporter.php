@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
-use Illuminate\Contracts\Config\Repository;
+use Illuminate\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 
 final class ErrorReporter
@@ -22,18 +22,14 @@ final class ErrorReporter
 
     public function report(Throwable $exception): void
     {
-        $webhookUrl = $this->webhookUrl();
-
-        if ($this->reporting || $webhookUrl === null || ! $this->shouldReport($exception)) {
+        if ($this->reporting) {
             return;
         }
 
         $this->reporting = true;
 
         try {
-            if ($this->throttle->attempt($exception)) {
-                $this->webhook->send($webhookUrl, $this->builder->build($exception));
-            }
+            $this->send($exception);
         } catch (Throwable) {
             //
         } finally {
@@ -41,35 +37,35 @@ final class ErrorReporter
         }
     }
 
+    private function send(Throwable $exception): void
+    {
+        $webhookUrl = $this->config->string('slack-errors.webhook_url');
+
+        if ($webhookUrl === '' || ! $this->shouldReport($exception) || ! $this->throttle->attempt($exception)) {
+            return;
+        }
+
+        try {
+            $this->webhook->send($webhookUrl, $this->builder->build($exception));
+        } catch (Throwable $sendFailure) {
+            $this->throttle->release($exception);
+
+            throw $sendFailure;
+        }
+    }
+
     private function shouldReport(Throwable $exception): bool
     {
-        return $this->config->get('slack-errors.enabled') === true
-            && $this->app->environment($this->environments()) === true
+        return $this->config->boolean('slack-errors.enabled')
+            && $this->app->environment($this->config->array('slack-errors.environments')) === true
             && ! $this->isIgnored($exception);
-    }
-
-    private function webhookUrl(): ?string
-    {
-        $url = $this->config->get('slack-errors.webhook_url');
-
-        return is_string($url) && $url !== '' ? $url : null;
-    }
-
-    /**
-     * @return list<string>
-     */
-    private function environments(): array
-    {
-        $environments = $this->config->get('slack-errors.environments');
-
-        return is_array($environments) ? array_values(array_filter($environments, is_string(...))) : [];
     }
 
     private function isIgnored(Throwable $exception): bool
     {
-        $ignored = $this->config->get('slack-errors.ignore');
-
-        return is_array($ignored)
-            && array_any($ignored, fn (mixed $class): bool => is_string($class) && $exception instanceof $class);
+        return array_any(
+            $this->config->array('slack-errors.ignore'),
+            fn (mixed $class): bool => is_string($class) && $exception instanceof $class,
+        );
     }
 }

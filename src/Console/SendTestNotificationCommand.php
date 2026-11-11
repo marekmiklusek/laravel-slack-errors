@@ -6,7 +6,7 @@ namespace MarekMiklusek\SlackErrors\Console;
 
 use Throwable;
 use Illuminate\Console\Command;
-use Illuminate\Contracts\Config\Repository;
+use Illuminate\Config\Repository;
 use MarekMiklusek\SlackErrors\SlackWebhook;
 use Illuminate\Console\Attributes\Signature;
 use MarekMiklusek\SlackErrors\MessageBuilder;
@@ -19,9 +19,9 @@ final class SendTestNotificationCommand extends Command
 {
     public function handle(Repository $config, MessageBuilder $builder, SlackWebhook $webhook): int
     {
-        $url = $config->get('slack-errors.webhook_url');
+        $url = $config->string('slack-errors.webhook_url');
 
-        if (! is_string($url) || $url === '') {
+        if ($url === '') {
             $this->components->error('Set SLACK_ERRORS_WEBHOOK_URL before sending a test notification.');
 
             return self::FAILURE;
@@ -30,7 +30,7 @@ final class SendTestNotificationCommand extends Command
         try {
             $webhook->send($url, $builder->build(new TestNotificationException));
         } catch (Throwable $exception) {
-            $this->components->error('Slack did not accept the notification: '.$exception->getMessage());
+            $this->components->error('Slack did not accept the notification: '.str_replace($url, '***', $exception->getMessage()));
 
             return self::FAILURE;
         }

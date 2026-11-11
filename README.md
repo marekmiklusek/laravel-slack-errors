@@ -65,7 +65,7 @@ Everything is configurable through `.env`:
 | `SLACK_ERRORS_MENTION` | | Prepended to every message, e.g. `<!channel>`, `<!here>` or `<@U012AB3CD>`. |
 | `SLACK_ERRORS_TIMEOUT` | `3` | Seconds to wait for Slack. |
 | `SLACK_ERRORS_THROTTLE` | `10` | Minutes during which the same exception is sent only once. `0` disables it. |
-| `SLACK_ERRORS_CACHE_STORE` | default store | Cache store used by the throttle. |
+| `SLACK_ERRORS_CACHE_STORE` | `file` | Cache store used by the throttle. The local `file` store keeps working when Redis or the database is down. |
 
 To change the bar color or ignore specific exception classes (subclasses included), publish
 the config:
@@ -83,7 +83,17 @@ php artisan vendor:publish --tag=slack-errors-config
 ],
 ```
 
-Exceptions listed in your application's `dontReport` are never sent either.
+Exceptions listed in your application's `dontReport` are never sent either, and neither are
+exceptions with their own `report()` method or ones stopped by a `reportable(...)->stop()`
+callback registered before this package.
+
+`QueryException` messages contain the SQL with its bindings (emails, tokens). To keep those values
+out of Slack, enable binding masking on your database connection:
+
+```php
+// config/database.php, inside a connection
+'mask_bindings_in_exception_messages' => true,
+```
 
 ## What the message contains
 
@@ -92,8 +102,8 @@ Exceptions listed in your application's `dontReport` are never sent either.
 | Header | App name and environment |
 | Exception | Class and message |
 | Location | File and line, relative to the project root |
-| URL | HTTP method and URL for web requests, without the query string |
-| Command, Job | The artisan command, or the job class inside queue workers |
+| URL | HTTP method and route template for web requests (`/reset-password/{token}`), without the query string |
+| Command, Job | The artisan command name without its arguments, or the job class inside queue workers |
 | User | ID of the authenticated user, if the request already loaded one |
 | Stack trace | Up to 10 frames from your own code, vendor and entry points skipped |
 
@@ -105,9 +115,11 @@ Exceptions listed in your application's `dontReport` are never sent either.
 - The message is sent synchronously with a short timeout. Queues are not used on
   purpose: when something breaks, the queue or Redis is often part of the
   problem.
-- Repeats of the same exception (class, file and line) are held back for the
-  throttle window. The message is left out on purpose, so IDs in it do not bypass
-  the throttle. If the cache is unavailable, the notification is sent anyway.
+- Repeats of the same exception are held back for the throttle window. An exception
+  is identified by its class and where it comes from in your code: for exceptions
+  thrown inside vendor (every `QueryException`), that is the first frame of your own
+  code. The message is left out on purpose, so IDs in it do not bypass the throttle.
+  If the cache is unavailable or sending fails, the notification is not held back.
 - Any failure while talking to Slack is swallowed, and an exception thrown while
   a report is in progress is not reported again.
 

@@ -36,13 +36,13 @@ it('builds the fallback text and header', function (): void {
 });
 
 it('falls back to a default app name', function (): void {
-    config(['app.name' => null]);
+    config(['app.name' => '']);
 
     expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Laravel | testing');
 });
 
 it('leaves the environment out of the header when it is unknown', function (): void {
-    config(['app.name' => 'Shop', 'app.env' => null]);
+    config(['app.name' => 'Shop', 'app.env' => '']);
 
     expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Shop');
 });
@@ -127,7 +127,21 @@ it('uses the configured color', function (): void {
 });
 
 it('leaves the color out when none is configured', function (): void {
-    config(['slack-errors.color' => null]);
+    config(['slack-errors.color' => '']);
 
     expect(buildMessage(messageException())['attachments'][0])->not->toHaveKey('color');
+});
+
+it('replaces invalid UTF-8 so the payload can always be encoded', function (): void {
+    $payload = buildMessage(messageException("Duplicate entry '\xB1\xFF' for key"));
+
+    expect(json_encode($payload, JSON_THROW_ON_ERROR))->toContain('Duplicate entry');
+});
+
+it('truncates after escaping so the limits hold', function (): void {
+    $text = data_get(buildMessage(messageException(str_repeat('&', 1000))), 'attachments.0.blocks.1.text.text');
+
+    assert(is_string($text));
+
+    expect(mb_strlen(explode("\n", $text)[2]))->toBeLessThanOrEqual(503);
 });

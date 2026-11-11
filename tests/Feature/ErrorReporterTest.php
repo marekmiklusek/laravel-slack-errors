@@ -101,3 +101,12 @@ it('sends the same exception only once within the throttle window', function ():
 
     Http::assertSentCount(1);
 });
+
+it('sends the exception again when the previous attempt failed', function (): void {
+    Http::fake(['*' => Http::response('invalid_payload', 400)]);
+
+    app(ErrorReporter::class)->report(repeatedException());
+    app(ErrorReporter::class)->report(repeatedException());
+
+    Http::assertSentCount(2);
+});

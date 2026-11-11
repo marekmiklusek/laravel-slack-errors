@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Tests\TestCase;
 use Illuminate\Queue\Jobs\SyncJob;
 use Illuminate\Http\Client\Request;
+use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Queue\Events\JobProcessed;
@@ -21,12 +22,12 @@ it('registers the package service provider', function (): void {
 });
 
 it('merges the package configuration', function (): void {
-    expect(config('slack-errors.enabled'))->toBeTrue()
-        ->and(config('slack-errors.timeout'))->toBe(3)
-        ->and(config('slack-errors.mention'))->toBe('')
-        ->and(config('slack-errors.throttle'))->toBe(10)
-        ->and(config('slack-errors.color'))->toBe('#ECB22E')
-        ->and(config('slack-errors.ignore'))->toBe([]);
+    expect(config()->boolean('slack-errors.enabled'))->toBeTrue()
+        ->and(config()->integer('slack-errors.timeout'))->toBe(3)
+        ->and(config()->string('slack-errors.mention'))->toBe('')
+        ->and(config()->integer('slack-errors.throttle'))->toBe(10)
+        ->and(config()->string('slack-errors.color'))->toBe('#ECB22E')
+        ->and(config()->array('slack-errors.ignore'))->toBe([]);
 });
 
 it('publishes the configuration file', function (): void {
@@ -122,6 +123,14 @@ it('tracks the queue job being processed', function (): void {
     expect(app(CurrentJob::class)->name())->toBe('App\Jobs\SyncOrders');
 
     event(new JobProcessed('sync', $job));
+
+    expect(app(CurrentJob::class)->name())->toBeNull();
+});
+
+it('forgets a failed job before the worker polls again', function (): void {
+    app(CurrentJob::class)->set('App\Jobs\SyncOrders');
+
+    event(new Looping('database', 'default'));
 
     expect(app(CurrentJob::class)->name())->toBeNull();
 });

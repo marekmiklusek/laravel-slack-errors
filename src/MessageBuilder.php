@@ -6,8 +6,7 @@ namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
 use Illuminate\Support\Str;
-use Illuminate\Contracts\Config\Repository;
-use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Config\Repository;
 
 final readonly class MessageBuilder
 {
@@ -15,12 +14,10 @@ final readonly class MessageBuilder
 
     private const int MAX_FIELDS = 10;
 
-    private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
-
     public function __construct(
-        private Application $app,
         private Repository $config,
         private ContextResolver $context,
+        private StackTrace $stackTrace,
     ) {}
 
     /**
@@ -28,19 +25,19 @@ final readonly class MessageBuilder
      */
     public function build(Throwable $exception): array
     {
-        $class = $exception::class;
-        $message = Str::limit($exception->getMessage() !== '' ? $exception->getMessage() : '(no message)', 500);
-        $mention = $this->mention();
+        $class = $this->escape($exception::class);
+        $message = $exception->getMessage() !== '' ? $this->escape($exception->getMessage()) : '(no message)';
+        $mention = $this->config->string('slack-errors.mention');
 
         $blocks = [
             [
                 'type' => 'header',
-                'text' => ['type' => 'plain_text', 'text' => Str::limit('🪲 '.$this->title(), 140), 'emoji' => true],
+                'text' => ['type' => 'plain_text', 'text' => Str::limit('🪲 '.mb_scrub($this->title(), 'UTF-8'), 140), 'emoji' => true],
             ],
             $this->section(
-                '*'.$this->escape($class).'*'
-                ."\n\n".$this->escape($message)
-                ."\n\n`".$this->escape($this->location($exception)).'`',
+                '*'.$class.'*'
+                ."\n\n".Str::limit($message, 500)
+                ."\n\n`".$this->escape($this->stackTrace->location($exception)).'`',
             ),
         ];
 
@@ -53,16 +50,16 @@ final readonly class MessageBuilder
         $trace = $this->trace($exception);
 
         if ($trace !== '') {
-            $blocks[] = $this->section("```\n".$this->escape($trace)."\n```");
+            $blocks[] = $this->section("```\n".$trace."\n```");
         }
 
-        $fallback = $this->escape(Str::limit($this->title().': '.$class.': '.$message, 300));
+        $fallback = Str::limit($this->escape($this->title()).': '.$class.': '.$message, 300);
 
         $attachment = ['fallback' => $fallback, 'blocks' => $blocks];
 
-        $color = $this->color();
+        $color = $this->config->string('slack-errors.color');
 
-        if ($color !== null) {
+        if ($color !== '') {
             $attachment = ['color' => $color, ...$attachment];
         }
 
@@ -83,43 +80,20 @@ final readonly class MessageBuilder
         $fields = [];
 
         foreach ($this->context->resolve() as $label => $value) {
-            $fields[] = $this->field($label, $this->escape(Str::limit($value, 1900)));
+            $fields[] = ['type' => 'mrkdwn', 'text' => '*'.$label."*\n".Str::limit($this->escape($value), 1900)];
         }
 
         return array_slice($fields, 0, self::MAX_FIELDS);
     }
 
-    private function location(Throwable $exception): string
-    {
-        return $this->relativePath($exception->getFile()).':'.$exception->getLine();
-    }
-
     private function trace(Throwable $exception): string
     {
-        $frames = [];
+        $frames = array_map(
+            fn (array $frame): string => $frame['file'].':'.$frame['line'].' '.$frame['call'],
+            array_slice($this->stackTrace->applicationFrames($exception), 0, self::MAX_FRAMES),
+        );
 
-        foreach ($exception->getTrace() as $frame) {
-            $file = $frame['file'] ?? null;
-
-            if ($file === null || ! $this->isApplicationFile($file)) {
-                continue;
-            }
-
-            $frames[] = sprintf(
-                '%s:%d %s%s%s()',
-                $this->relativePath($file),
-                $frame['line'] ?? 0,
-                $frame['class'] ?? '',
-                $frame['type'] ?? '',
-                $frame['function'],
-            );
-
-            if (count($frames) === self::MAX_FRAMES) {
-                break;
-            }
-        }
-
-        return Str::limit(implode("\n", $frames), 2500);
+        return Str::limit($this->escape(implode("\n", $frames)), 2500);
     }
 
     /**
@@ -130,69 +104,18 @@ final readonly class MessageBuilder
         return ['type' => 'section', 'text' => ['type' => 'mrkdwn', 'text' => $text]];
     }
 
-    /**
-     * @return array{type: string, text: string}
-     */
-    private function field(string $label, string $value): array
-    {
-        return ['type' => 'mrkdwn', 'text' => '*'.$label."*\n".$value];
-    }
-
     private function title(): string
     {
-        $name = $this->config->get('app.name');
-        $environment = $this->config->get('app.env');
+        $name = $this->config->string('app.name');
+        $environment = $this->config->string('app.env');
 
-        $title = is_string($name) && $name !== '' ? $name : 'Laravel';
+        $title = $name !== '' ? $name : 'Laravel';
 
-        return is_string($environment) && $environment !== '' ? $title.' | '.$environment : $title;
-    }
-
-    private function color(): ?string
-    {
-        $color = $this->config->get('slack-errors.color');
-
-        return is_string($color) && $color !== '' ? $color : null;
-    }
-
-    private function mention(): string
-    {
-        $mention = $this->config->get('slack-errors.mention');
-
-        return is_string($mention) ? mb_trim($mention) : '';
-    }
-
-    private function relativePath(string $file): string
-    {
-        $base = $this->basePath();
-        $file = $this->normalize($file);
-
-        return str_starts_with($file, $base) ? mb_substr($file, mb_strlen($base)) : $file;
-    }
-
-    private function isApplicationFile(string $file): bool
-    {
-        if (! str_starts_with($this->normalize($file), $this->basePath())) {
-            return false;
-        }
-
-        $relative = $this->relativePath($file);
-
-        return ! str_starts_with($relative, 'vendor/') && ! in_array($relative, self::ENTRY_POINTS, true);
-    }
-
-    private function basePath(): string
-    {
-        return mb_rtrim($this->normalize($this->app->basePath()), '/').'/';
-    }
-
-    private function normalize(string $path): string
-    {
-        return str_replace('\\', '/', $path);
+        return $environment !== '' ? $title.' | '.$environment : $title;
     }
 
     private function escape(string $value): string
     {
-        return str_replace(['&', '<', '>'], ['&amp;', '&lt;', '&gt;'], $value);
+        return str_replace(['&', '<', '>'], ['&amp;', '&lt;', '&gt;'], mb_scrub($value, 'UTF-8'));
     }
 }

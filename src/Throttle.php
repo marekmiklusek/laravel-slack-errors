@@ -5,47 +5,51 @@ declare(strict_types=1);
 namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
-use Illuminate\Contracts\Config\Repository;
+use Illuminate\Config\Repository;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
+use Illuminate\Contracts\Cache\Repository as CacheRepository;
 
 final readonly class Throttle
 {
     public function __construct(
         private CacheFactory $cache,
         private Repository $config,
+        private StackTrace $stackTrace,
     ) {}
 
     public function attempt(Throwable $exception): bool
     {
-        $minutes = $this->minutes();
-
-        if ($minutes === 0) {
-            return true;
-        }
-
         try {
-            return $this->cache->store($this->store())->add($this->key($exception), true, $minutes * 60);
+            $minutes = $this->config->integer('slack-errors.throttle');
+
+            if ($minutes <= 0) {
+                return true;
+            }
+
+            return $this->store()->add($this->key($exception), true, $minutes * 60);
         } catch (Throwable) {
             return true;
         }
     }
 
+    public function release(Throwable $exception): void
+    {
+        try {
+            $this->store()->forget($this->key($exception));
+        } catch (Throwable) {
+            //
+        }
+    }
+
     private function key(Throwable $exception): string
     {
-        return 'slack-errors:'.hash('xxh128', $exception::class.'|'.$exception->getFile().'|'.$exception->getLine());
+        return 'slack-errors:'.hash('xxh128', $exception::class.'|'.$this->stackTrace->origin($exception));
     }
 
-    private function minutes(): int
+    private function store(): CacheRepository
     {
-        $minutes = $this->config->get('slack-errors.throttle');
+        $store = $this->config->string('slack-errors.cache_store');
 
-        return is_int($minutes) && $minutes > 0 ? $minutes : 0;
-    }
-
-    private function store(): ?string
-    {
-        $store = $this->config->get('slack-errors.cache_store');
-
-        return is_string($store) && $store !== '' ? $store : null;
+        return $this->cache->store($store !== '' ? $store : null);
     }
 }
