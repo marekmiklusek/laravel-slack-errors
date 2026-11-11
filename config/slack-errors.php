@@ -82,8 +82,9 @@ return [
     | Throttle
     |--------------------------------------------------------------------------
     |
-    | Minutes during which the same exception (class, file and line) is sent
-    | only once, so an error in a loop never floods the channel. 0 disables it.
+    | Minutes during which the same exception (its class and where it comes
+    | from in your code) is sent only once, so an error in a loop never floods
+    | the channel. 0 disables it.
     |
     */
 

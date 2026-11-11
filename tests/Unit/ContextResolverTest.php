@@ -25,20 +25,25 @@ function resolveContext(Application $app, ?CurrentJob $job = null): array
     return new ContextResolver($app, $job ?? new CurrentJob)->resolve();
 }
 
+function httpContextApp(): Application
+{
+    $_SERVER['APP_RUNNING_IN_CONSOLE'] = 'false';
+
+    try {
+        return contextApp();
+    } finally {
+        unset($_SERVER['APP_RUNNING_IN_CONSOLE']);
+    }
+}
+
 /**
  * @return array<string, string>
  */
 function resolveHttpContext(Application $app, ?Request $request = null): array
 {
-    $_SERVER['APP_RUNNING_IN_CONSOLE'] = 'false';
+    $app->instance(Request::class, $request ?? Request::create('https://shop.test/'));
 
-    try {
-        $app->instance(Request::class, $request ?? Request::create('https://shop.test/'));
-
-        return resolveContext($app);
-    } finally {
-        unset($_SERVER['APP_RUNNING_IN_CONSOLE']);
-    }
+    return resolveContext($app);
 }
 
 function authWithGuard(Guard $guard): AuthFactory
@@ -92,21 +97,21 @@ it('skips the command when argv is unavailable', function (): void {
 it('leaves the path out when no route was resolved', function (): void {
     $request = Request::create('https://shop.test/reset-password/secret-token?step=2', 'POST');
 
-    expect(resolveHttpContext(contextApp(), $request))->toBe(['URL' => 'POST https://shop.test (route not resolved)']);
+    expect(resolveHttpContext(httpContextApp(), $request))->toBe(['URL' => 'POST https://shop.test (route not resolved)']);
 });
 
 it('shows the route template instead of the real path', function (): void {
     $request = Request::create('https://shop.test/reset-password/secret-token?email=marek@example.com', 'POST');
     $request->setRouteResolver(fn (): Route => new Route(['POST'], 'reset-password/{token}', fn (): null => null));
 
-    expect(resolveHttpContext(contextApp(), $request))->toBe(['URL' => 'POST https://shop.test/reset-password/{token}']);
+    expect(resolveHttpContext(httpContextApp(), $request))->toBe(['URL' => 'POST https://shop.test/reset-password/{token}']);
 });
 
 it('includes the user the application already loaded', function (): void {
     $guard = new RequestGuard(fn (): null => null, Request::create('/'));
     $guard->setUser(new GenericUser(['id' => 42]));
 
-    $app = contextApp();
+    $app = httpContextApp();
     $app->instance(AuthFactory::class, authWithGuard($guard));
 
     expect(resolveHttpContext($app))->toHaveKey('User', '42');
@@ -123,14 +128,14 @@ it('never reports a user in the console', function (): void {
 });
 
 it('skips the user when none is loaded', function (): void {
-    $app = contextApp();
+    $app = httpContextApp();
     $app->instance(AuthFactory::class, authWithGuard(new RequestGuard(fn (): null => null, Request::create('/'))));
 
     expect(resolveHttpContext($app))->not->toHaveKey('User');
 });
 
 it('skips the user when the auth guard fails', function (): void {
-    $app = contextApp();
+    $app = httpContextApp();
     $app->bind(AuthFactory::class, fn (): never => throw new RuntimeException('Session store not set on request.'));
 
     expect(resolveHttpContext($app))->not->toHaveKey('User');
