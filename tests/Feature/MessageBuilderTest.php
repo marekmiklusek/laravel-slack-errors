@@ -27,17 +27,23 @@ it('builds the fallback text and header', function (): void {
 
     $payload = buildMessage(messageException());
 
-    expect($payload['text'])->toBe('Shop: RuntimeException: Order &lt;42&gt; &amp; co')
+    expect($payload['text'])->toBe('Shop | testing: RuntimeException: Order &lt;42&gt; &amp; co')
         ->and($payload['blocks'][0])->toBe([
             'type' => 'header',
-            'text' => ['type' => 'plain_text', 'text' => '🚨 Shop', 'emoji' => true],
+            'text' => ['type' => 'plain_text', 'text' => '🚨 Shop | testing', 'emoji' => true],
         ]);
 });
 
 it('falls back to a default app name', function (): void {
     config(['app.name' => null]);
 
-    expect(data_get(buildMessage(messageException()), 'blocks.0.text.text'))->toBe('🚨 Laravel');
+    expect(data_get(buildMessage(messageException()), 'blocks.0.text.text'))->toBe('🚨 Laravel | testing');
+});
+
+it('leaves the environment out of the header when it is unknown', function (): void {
+    config(['app.name' => 'Shop', 'app.env' => null]);
+
+    expect(data_get(buildMessage(messageException()), 'blocks.0.text.text'))->toBe('🚨 Shop');
 });
 
 it('describes the exception with escaped mrkdwn', function (): void {
@@ -73,7 +79,7 @@ it('lists the location and the context as fields', function (): void {
     expect($fields)->toBeArray()
         ->and(data_get($fields, '0.text'))->toStartWith("*Location*\n`")
         ->toContain('MessageBuilderTest.php:')
-        ->and(data_get($fields, '1.text'))->toBe("*Environment*\ntesting");
+        ->and(data_get($fields, '1.text'))->toStartWith("*Host*\n");
 });
 
 it('shows paths relative to the application base path', function (): void {
@@ -84,6 +90,8 @@ it('shows paths relative to the application base path', function (): void {
 });
 
 it('adds at most ten application frames of the stack trace', function (): void {
+    app()->setBasePath(dirname(__DIR__, 2));
+
     $trace = data_get(buildMessage(nestedMessageException(15)), 'blocks.3.text.text');
 
     assert(is_string($trace));
@@ -94,6 +102,6 @@ it('adds at most ten application frames of the stack trace', function (): void {
         ->and(explode("\n", $trace))->toHaveCount(12);
 });
 
-it('omits the stack trace when it only contains vendor frames', function (): void {
+it('omits the stack trace without frames from the project', function (): void {
     expect(buildMessage(new RuntimeException('Vendor only'))['blocks'])->toHaveCount(3);
 });

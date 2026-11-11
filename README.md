@@ -86,14 +86,14 @@ Exceptions listed in your application's `dontReport` are never sent either.
 
 | Field | Value |
 | --- | --- |
-| Header | App name |
+| Header | App name and environment |
 | Exception | Class and message |
 | Location | File and line, relative to the project root |
-| Environment, Host | `APP_ENV` and server hostname |
+| Host | Server hostname |
 | URL, IP | HTTP method, full URL and client IP for web requests |
 | Command, Job | The artisan command, and the job class inside queue workers |
 | User | ID of the authenticated user, if the request already loaded one |
-| Stack trace | Up to 10 application frames, vendor frames skipped |
+| Stack trace | Up to 10 frames from your own code, vendor and entry points skipped |
 
 ## How it works
 

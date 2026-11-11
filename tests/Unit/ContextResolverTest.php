@@ -5,7 +5,6 @@ declare(strict_types=1);
 use Illuminate\Http\Request;
 use Illuminate\Auth\GenericUser;
 use Illuminate\Auth\RequestGuard;
-use Illuminate\Config\Repository;
 use Illuminate\Contracts\Auth\Guard;
 use Illuminate\Foundation\Application;
 use MarekMiklusek\SlackErrors\CurrentJob;
@@ -22,7 +21,7 @@ function contextApp(): Application
  */
 function resolveContext(Application $app, ?CurrentJob $job = null): array
 {
-    return new ContextResolver($app, new Repository(['app' => ['env' => 'production']]), $job ?? new CurrentJob)->resolve();
+    return new ContextResolver($app, $job ?? new CurrentJob)->resolve();
 }
 
 function authWithGuard(Guard $guard): AuthFactory
@@ -51,7 +50,7 @@ it('describes a console command', function (): void {
     }
 
     expect($context)
-        ->toMatchArray(['Environment' => 'production', 'Command' => 'artisan orders:sync --force'])
+        ->toMatchArray(['Command' => 'artisan orders:sync --force'])
         ->toHaveKey('Host')
         ->not->toHaveKeys(['URL', 'IP', 'User', 'Job']);
 });

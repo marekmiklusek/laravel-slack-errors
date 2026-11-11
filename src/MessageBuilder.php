@@ -15,6 +15,8 @@ final readonly class MessageBuilder
 
     private const int MAX_FIELDS = 10;
 
+    private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
+
     public function __construct(
         private Application $app,
         private Repository $config,
@@ -33,7 +35,7 @@ final readonly class MessageBuilder
         $blocks = [
             [
                 'type' => 'header',
-                'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->appName(), 140), 'emoji' => true],
+                'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->title(), 140), 'emoji' => true],
             ],
             $this->section(mb_ltrim($mention.' *'.$this->escape($class).'*')."\n".$this->escape($message)),
             ['type' => 'section', 'fields' => $this->fields($exception)],
@@ -46,7 +48,7 @@ final readonly class MessageBuilder
         }
 
         return [
-            'text' => mb_ltrim($mention.' '.$this->escape(Str::limit($this->appName().': '.$class.': '.$message, 300))),
+            'text' => mb_ltrim($mention.' '.$this->escape(Str::limit($this->title().': '.$class.': '.$message, 300))),
             'blocks' => $blocks,
         ];
     }
@@ -74,7 +76,7 @@ final readonly class MessageBuilder
         foreach ($exception->getTrace() as $frame) {
             $file = $frame['file'] ?? null;
 
-            if ($file === null || $this->isVendor($file)) {
+            if ($file === null || ! $this->isApplicationFile($file)) {
                 continue;
             }
 
@@ -111,11 +113,14 @@ final readonly class MessageBuilder
         return ['type' => 'mrkdwn', 'text' => '*'.$label."*\n".$value];
     }
 
-    private function appName(): string
+    private function title(): string
     {
         $name = $this->config->get('app.name');
+        $environment = $this->config->get('app.env');
 
-        return is_string($name) && $name !== '' ? $name : 'Laravel';
+        $title = is_string($name) && $name !== '' ? $name : 'Laravel';
+
+        return is_string($environment) && $environment !== '' ? $title.' | '.$environment : $title;
     }
 
     private function mention(): string
@@ -127,15 +132,26 @@ final readonly class MessageBuilder
 
     private function relativePath(string $file): string
     {
-        $base = mb_rtrim($this->normalize($this->app->basePath()), '/').'/';
+        $base = $this->basePath();
         $file = $this->normalize($file);
 
         return str_starts_with($file, $base) ? mb_substr($file, mb_strlen($base)) : $file;
     }
 
-    private function isVendor(string $file): bool
+    private function isApplicationFile(string $file): bool
     {
-        return str_contains($this->normalize($file), '/vendor/');
+        if (! str_starts_with($this->normalize($file), $this->basePath())) {
+            return false;
+        }
+
+        $relative = $this->relativePath($file);
+
+        return ! str_starts_with($relative, 'vendor/') && ! in_array($relative, self::ENTRY_POINTS, true);
+    }
+
+    private function basePath(): string
+    {
+        return mb_rtrim($this->normalize($this->app->basePath()), '/').'/';
     }
 
     private function normalize(string $path): string

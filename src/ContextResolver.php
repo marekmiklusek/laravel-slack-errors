@@ -6,7 +6,6 @@ namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
 use Illuminate\Http\Request;
-use Illuminate\Contracts\Config\Repository;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Contracts\Auth\Factory as AuthFactory;
 
@@ -14,7 +13,6 @@ final readonly class ContextResolver
 {
     public function __construct(
         private Application $app,
-        private Repository $config,
         private CurrentJob $job,
     ) {}
 
@@ -24,18 +22,10 @@ final readonly class ContextResolver
     public function resolve(): array
     {
         return array_filter([
-            'Environment' => $this->environment(),
             'Host' => gethostname() ?: null,
             ...$this->origin(),
             'User' => $this->userId(),
         ]);
-    }
-
-    private function environment(): ?string
-    {
-        $environment = $this->config->get('app.env');
-
-        return is_string($environment) ? $environment : null;
     }
 
     /**
