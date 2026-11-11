@@ -6,15 +6,28 @@ namespace MarekMiklusek\SlackErrors;
 
 final class CurrentJob
 {
-    private ?string $name = null;
+    /**
+     * @var list<string>
+     */
+    private array $names = [];
 
-    public function set(?string $name): void
+    public function push(string $name): void
     {
-        $this->name = $name;
+        $this->names[] = $name;
+    }
+
+    public function pop(): void
+    {
+        array_pop($this->names);
+    }
+
+    public function clear(): void
+    {
+        $this->names = [];
     }
 
     public function name(): ?string
     {
-        return $this->name;
+        return $this->names[count($this->names) - 1] ?? null;
     }
 }

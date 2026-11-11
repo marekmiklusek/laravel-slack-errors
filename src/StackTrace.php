@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
+use ReflectionClass;
 use Illuminate\Contracts\Foundation\Application;
 
 final readonly class StackTrace
@@ -41,7 +42,11 @@ final readonly class StackTrace
 
     public function origin(Throwable $exception): string
     {
-        if (! $this->isApplicationFile($exception->getFile())) {
+        $file = $exception->getFile();
+
+        $builtByOwnClass = $this->normalize($file) === $this->normalize((string) new ReflectionClass($exception)->getFileName());
+
+        if (! $this->isApplicationFile($file) || $builtByOwnClass) {
             $frame = $this->applicationFrames($exception)[0] ?? null;
 
             if ($frame !== null) {

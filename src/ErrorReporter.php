@@ -6,6 +6,8 @@ namespace MarekMiklusek\SlackErrors;
 
 use Throwable;
 use Illuminate\Config\Repository;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Contracts\Foundation\Application;
 
 final class ErrorReporter
@@ -41,17 +43,31 @@ final class ErrorReporter
     {
         $webhookUrl = $this->config->string('slack-errors.webhook_url');
 
-        if ($webhookUrl === '' || ! $this->shouldReport($exception) || ! $this->throttle->attempt($exception)) {
+        if ($webhookUrl === ''
+            || ! $this->shouldReport($exception)
+            || $this->throttle->slackIsDown()
+            || ! $this->throttle->attempt($exception)) {
             return;
         }
 
         try {
             $this->webhook->send($webhookUrl, $this->builder->build($exception));
         } catch (Throwable $sendFailure) {
-            $this->throttle->release($exception);
+            if ($this->isSlackOutage($sendFailure)) {
+                $this->throttle->markSlackDown();
+            } else {
+                $this->throttle->release($exception);
+            }
 
             throw $sendFailure;
         }
+    }
+
+    private function isSlackOutage(Throwable $failure): bool
+    {
+        return $failure instanceof ConnectionException
+            || ($failure instanceof RequestException
+                && ($failure->response->status() === 429 || $failure->response->serverError()));
     }
 
     private function shouldReport(Throwable $exception): bool

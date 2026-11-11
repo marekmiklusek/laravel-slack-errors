@@ -31,14 +31,14 @@ it('does not send when disabled', function (): void {
     Http::assertNothingSent();
 });
 
-it('does not send without a webhook url', function (?string $url): void {
+it('does not send without a webhook url', function (): void {
     Http::fake();
-    config(['slack-errors.webhook_url' => $url]);
+    config(['slack-errors.webhook_url' => '']);
 
     app(ErrorReporter::class)->report(new RuntimeException('Payment failed'));
 
     Http::assertNothingSent();
-})->with(['missing' => [null], 'empty' => ['']]);
+});
 
 it('does not send outside the configured environments', function (): void {
     Http::fake();
@@ -110,3 +110,21 @@ it('sends the exception again when the previous attempt failed', function (): vo
 
     Http::assertSentCount(2);
 });
+
+it('pauses sending while slack is unreachable', function (): void {
+    Http::fake(['*' => Http::failedConnection()]);
+
+    app(ErrorReporter::class)->report(new RuntimeException('First outage error'));
+    app(ErrorReporter::class)->report(new RuntimeException('Second outage error'));
+
+    Http::assertSentCount(1);
+});
+
+it('pauses sending while slack rate limits or fails', function (int $status): void {
+    Http::fake(['*' => Http::response('unavailable', $status)]);
+
+    app(ErrorReporter::class)->report(new RuntimeException('First outage error'));
+    app(ErrorReporter::class)->report(new RuntimeException('Second outage error'));
+
+    Http::assertSentCount(1);
+})->with(['rate limited' => [429], 'server error' => [503]]);

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace MarekMiklusek\SlackErrors;
 
+use WeakMap;
 use Throwable;
 use Illuminate\Queue\Events\Looping;
 use Illuminate\Support\ServiceProvider;
@@ -16,6 +17,11 @@ use MarekMiklusek\SlackErrors\Console\SendTestNotificationCommand;
 
 final class SlackErrorsServiceProvider extends ServiceProvider
 {
+    /**
+     * @var WeakMap<ExceptionHandler, true>|null
+     */
+    private ?WeakMap $hooked = null;
+
     public function register(): void
     {
         $this->mergeConfigFrom(__DIR__.'/../config/slack-errors.php', 'slack-errors');
@@ -36,10 +42,14 @@ final class SlackErrorsServiceProvider extends ServiceProvider
 
         $this->trackQueueJobs();
 
+        $this->hooked ??= new WeakMap;
+
         $this->callAfterResolving(ExceptionHandler::class, function (ExceptionHandler $handler): void {
-            if (! method_exists($handler, 'reportable')) {
+            if (! $this->hooked instanceof WeakMap || isset($this->hooked[$handler]) || ! method_exists($handler, 'reportable')) {
                 return;
             }
+
+            $this->hooked[$handler] = true;
 
             $handler->reportable(function (Throwable $exception): void {
                 $this->app->make(ErrorReporter::class)->report($exception);
@@ -52,11 +62,15 @@ final class SlackErrorsServiceProvider extends ServiceProvider
         $events = $this->app->make(Dispatcher::class);
 
         $events->listen(JobProcessing::class, function (JobProcessing $event): void {
-            $this->app->make(CurrentJob::class)->set($event->job->resolveName());
+            $this->app->make(CurrentJob::class)->push($event->job->resolveName());
         });
 
-        $events->listen([JobProcessed::class, Looping::class, WorkerStopping::class], function (): void {
-            $this->app->make(CurrentJob::class)->set(null);
+        $events->listen(JobProcessed::class, function (): void {
+            $this->app->make(CurrentJob::class)->pop();
+        });
+
+        $events->listen([Looping::class, WorkerStopping::class], function (): void {
+            $this->app->make(CurrentJob::class)->clear();
         });
     }
 }

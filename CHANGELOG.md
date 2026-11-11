@@ -22,7 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Stack trace limited to frames from the project's own code, skipping vendor and entry points.
 - Throttling: the same exception (class and origin in the project's code) is sent once per window,
   10 minutes by default. It uses the local `file` cache store by default, so it keeps working when
-  Redis or the database is down. An unavailable cache or a failed send never holds a notification back.
+  Redis or the database is down. A cache that is unavailable or keeps nothing never holds a
+  notification back, and a payload Slack rejects does not use up the window.
+- Sending pauses for a minute while Slack is unreachable, rate limits or fails, so requests and
+  workers never wait for it during an outage.
 - Environment filter with wildcard support, ignored exception classes and a master switch.
 - Optional mention prepended to every message and a configurable bar color.
 - Recursion guard: a failing Slack call never breaks or re-enters error reporting.

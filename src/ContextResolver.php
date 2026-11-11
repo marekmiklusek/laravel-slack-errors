@@ -22,32 +22,27 @@ final readonly class ContextResolver
      */
     public function resolve(): array
     {
-        return array_filter([
-            ...$this->origin(),
-            'User' => $this->userId(),
-        ]);
-    }
-
-    /**
-     * @return array<string, string|null>
-     */
-    private function origin(): array
-    {
         if ($this->app->runningInConsole()) {
             $job = $this->job->name();
 
-            return $job !== null ? ['Job' => $job] : ['Command' => $this->command()];
+            return array_filter($job !== null ? ['Job' => $job] : ['Command' => $this->command()]);
         }
 
-        return ['URL' => $this->url($this->app->make(Request::class))];
+        return array_filter([
+            'URL' => $this->url($this->app->make(Request::class)),
+            'User' => $this->userId(),
+        ]);
     }
 
     private function url(Request $request): string
     {
         $route = $request->route();
-        $path = $route instanceof Route ? $route->uri() : $request->path();
 
-        return $request->method().' '.$request->root().'/'.mb_ltrim($path, '/');
+        if (! $route instanceof Route) {
+            return $request->method().' '.$request->root().' (route not resolved)';
+        }
+
+        return $request->method().' '.$request->root().'/'.mb_ltrim($route->uri(), '/');
     }
 
     private function command(): ?string

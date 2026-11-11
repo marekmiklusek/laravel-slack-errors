@@ -102,9 +102,9 @@ out of Slack, enable binding masking on your database connection:
 | Header | App name and environment |
 | Exception | Class and message |
 | Location | File and line, relative to the project root |
-| URL | HTTP method and route template for web requests (`/reset-password/{token}`), without the query string |
+| URL | HTTP method and route template for web requests (`/reset-password/{token}`), without the query string. Only the domain when the error happens before routing |
 | Command, Job | The artisan command name without its arguments, or the job class inside queue workers |
-| User | ID of the authenticated user, if the request already loaded one |
+| User | ID of the authenticated user for web requests, if the request already loaded one |
 | Stack trace | Up to 10 frames from your own code, vendor and entry points skipped |
 
 ## How it works
@@ -119,7 +119,10 @@ out of Slack, enable binding masking on your database connection:
   is identified by its class and where it comes from in your code: for exceptions
   thrown inside vendor (every `QueryException`), that is the first frame of your own
   code. The message is left out on purpose, so IDs in it do not bypass the throttle.
-  If the cache is unavailable or sending fails, the notification is not held back.
+  A cache that is unavailable or keeps nothing (the `null` driver) never holds a
+  notification back.
+- When Slack is unreachable, rate limits or fails, sending pauses for a minute, so
+  requests and workers never wait for it during an outage.
 - Any failure while talking to Slack is swallowed, and an exception thrown while
   a report is in progress is not reported again.
 
