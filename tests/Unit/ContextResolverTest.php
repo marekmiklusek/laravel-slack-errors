@@ -50,9 +50,7 @@ it('describes a console command', function (): void {
     }
 
     expect($context)
-        ->toMatchArray(['Command' => 'artisan orders:sync --force'])
-        ->toHaveKey('Host')
-        ->not->toHaveKeys(['URL', 'IP', 'User', 'Job']);
+        ->toBe(['Command' => 'artisan orders:sync --force']);
 });
 
 it('names the queue job being processed', function (): void {
@@ -80,20 +78,14 @@ it('describes an http request', function (): void {
 
     try {
         $app = contextApp();
-        $app->instance(Request::class, Request::create(
-            'https://shop.test/checkout?step=2',
-            'POST',
-            server: ['REMOTE_ADDR' => '203.0.113.7'],
-        ));
+        $app->instance(Request::class, Request::create('https://shop.test/checkout?step=2', 'POST'));
 
         $context = resolveContext($app);
     } finally {
         unset($_SERVER['APP_RUNNING_IN_CONSOLE']);
     }
 
-    expect($context)
-        ->toMatchArray(['URL' => 'POST https://shop.test/checkout?step=2', 'IP' => '203.0.113.7'])
-        ->not->toHaveKey('Command');
+    expect($context)->toBe(['URL' => 'POST https://shop.test/checkout']);
 });
 
 it('includes the user the application already loaded', function (): void {

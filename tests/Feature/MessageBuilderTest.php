@@ -84,7 +84,7 @@ it('shows the location on its own line under the exception', function (): void {
 });
 
 it('lists the context as fields', function (): void {
-    expect(data_get(buildMessage(messageException()), 'blocks.2.fields.0.text'))->toStartWith("*Host*\n");
+    expect(data_get(buildMessage(messageException()), 'blocks.2.fields.0.text'))->toStartWith("*Command*\n");
 });
 
 it('shows paths relative to the application base path', function (): void {

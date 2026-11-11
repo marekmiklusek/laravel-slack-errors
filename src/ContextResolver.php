@@ -22,7 +22,6 @@ final readonly class ContextResolver
     public function resolve(): array
     {
         return array_filter([
-            'Host' => gethostname() ?: null,
             ...$this->origin(),
             'User' => $this->userId(),
         ]);
@@ -42,10 +41,7 @@ final readonly class ContextResolver
 
         $request = $this->app->make(Request::class);
 
-        return [
-            'URL' => $request->method().' '.$request->fullUrl(),
-            'IP' => $request->ip(),
-        ];
+        return ['URL' => $request->method().' '.$request->url()];
     }
 
     private function command(): ?string
