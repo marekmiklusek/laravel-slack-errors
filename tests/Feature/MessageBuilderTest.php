@@ -15,7 +15,7 @@ function nestedMessageException(int $depth): RuntimeException
 }
 
 /**
- * @return array{text?: string, attachments: list<array{color: string, fallback: string, blocks: list<array<string, mixed>>}>}
+ * @return array{text?: string, attachments: list<array{color?: string, fallback: string, blocks: list<array<string, mixed>>}>}
  */
 function buildMessage(Throwable $exception): array
 {
@@ -117,5 +117,17 @@ it('wraps the blocks in a colored attachment', function (): void {
 
     expect($payload)->not->toHaveKey('blocks')
         ->and($payload['attachments'])->toHaveCount(1)
-        ->and($payload['attachments'][0]['color'])->toBe('#ECB22E');
+        ->and(data_get($payload, 'attachments.0.color'))->toBe('#ECB22E');
+});
+
+it('uses the configured color', function (): void {
+    config(['slack-errors.color' => '#8E44AD']);
+
+    expect(data_get(buildMessage(messageException()), 'attachments.0.color'))->toBe('#8E44AD');
+});
+
+it('leaves the color out when none is configured', function (): void {
+    config(['slack-errors.color' => null]);
+
+    expect(buildMessage(messageException())['attachments'][0])->not->toHaveKey('color');
 });

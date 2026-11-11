@@ -17,8 +17,6 @@ final readonly class MessageBuilder
 
     private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
 
-    private const string COLOR = '#ECB22E';
-
     public function __construct(
         private Application $app,
         private Repository $config,
@@ -26,7 +24,7 @@ final readonly class MessageBuilder
     ) {}
 
     /**
-     * @return array{text?: string, attachments: list<array{color: string, fallback: string, blocks: list<array<string, mixed>>}>}
+     * @return array{text?: string, attachments: list<array{color?: string, fallback: string, blocks: list<array<string, mixed>>}>}
      */
     public function build(Throwable $exception): array
     {
@@ -60,7 +58,15 @@ final readonly class MessageBuilder
 
         $fallback = $this->escape(Str::limit($this->title().': '.$class.': '.$message, 300));
 
-        $payload = ['attachments' => [['color' => self::COLOR, 'fallback' => $fallback, 'blocks' => $blocks]]];
+        $attachment = ['fallback' => $fallback, 'blocks' => $blocks];
+
+        $color = $this->color();
+
+        if ($color !== null) {
+            $attachment = ['color' => $color, ...$attachment];
+        }
+
+        $payload = ['attachments' => [$attachment]];
 
         if ($mention !== '') {
             $payload['text'] = $mention.' '.$fallback;
@@ -140,6 +146,13 @@ final readonly class MessageBuilder
         $title = is_string($name) && $name !== '' ? $name : 'Laravel';
 
         return is_string($environment) && $environment !== '' ? $title.' | '.$environment : $title;
+    }
+
+    private function color(): ?string
+    {
+        $color = $this->config->get('slack-errors.color');
+
+        return is_string($color) && $color !== '' ? $color : null;
     }
 
     private function mention(): string

@@ -67,7 +67,8 @@ Everything is configurable through `.env`:
 | `SLACK_ERRORS_THROTTLE` | `10` | Minutes during which the same exception is sent only once. `0` disables it. |
 | `SLACK_ERRORS_CACHE_STORE` | default store | Cache store used by the throttle. |
 
-To ignore specific exception classes (subclasses included), publish the config:
+To change the bar color or ignore specific exception classes (subclasses included), publish
+the config:
 
 ```bash
 php artisan vendor:publish --tag=slack-errors-config
@@ -75,6 +76,8 @@ php artisan vendor:publish --tag=slack-errors-config
 
 ```php
 // config/slack-errors.php
+'color' => '#ECB22E',
+
 'ignore' => [
     Illuminate\Validation\ValidationException::class,
 ],

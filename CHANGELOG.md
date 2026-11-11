@@ -22,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Throttling: the same exception (class, file and line) is sent once per window, 10 minutes by
   default, with a configurable cache store. An unavailable cache never blocks a notification.
 - Environment filter with wildcard support, ignored exception classes and a master switch.
-- Optional mention prepended to every message.
+- Optional mention prepended to every message and a configurable bar color.
 - Recursion guard: a failing Slack call never breaks or re-enters error reporting.
 - `slack-errors:test` command to verify the webhook.
 
