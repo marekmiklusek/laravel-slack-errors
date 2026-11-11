@@ -48,7 +48,7 @@ it('leaves the environment out of the header when it is unknown', function (): v
 
 it('describes the exception with escaped mrkdwn', function (): void {
     expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))
-        ->toBe("*RuntimeException*\nOrder &lt;42&gt; &amp; co");
+        ->toStartWith("*RuntimeException*\nOrder &lt;42&gt; &amp; co\n`");
 });
 
 it('prepends the configured mention', function (): void {
@@ -62,7 +62,7 @@ it('prepends the configured mention', function (): void {
 
 it('handles exceptions without a message', function (): void {
     expect(data_get(buildMessage(messageException('')), 'blocks.1.text.text'))
-        ->toBe("*RuntimeException*\n(no message)");
+        ->toStartWith("*RuntimeException*\n(no message)\n`");
 });
 
 it('truncates long messages', function (): void {
@@ -70,23 +70,28 @@ it('truncates long messages', function (): void {
 
     assert(is_string($text));
 
-    expect(mb_strlen($text))->toBeLessThan(600);
+    expect(mb_strlen(explode("\n", $text)[1]))->toBeLessThanOrEqual(503);
 });
 
-it('lists the location and the context as fields', function (): void {
-    $fields = data_get(buildMessage(messageException()), 'blocks.2.fields');
+it('shows the location on its own line under the exception', function (): void {
+    $text = data_get(buildMessage(messageException()), 'blocks.1.text.text');
 
-    expect($fields)->toBeArray()
-        ->and(data_get($fields, '0.text'))->toStartWith("*Location*\n`")
+    assert(is_string($text));
+
+    expect(explode("\n", $text)[2])->toStartWith('`')
         ->toContain('MessageBuilderTest.php:')
-        ->and(data_get($fields, '1.text'))->toStartWith("*Host*\n");
+        ->toEndWith('`');
+});
+
+it('lists the context as fields', function (): void {
+    expect(data_get(buildMessage(messageException()), 'blocks.2.fields.0.text'))->toStartWith("*Host*\n");
 });
 
 it('shows paths relative to the application base path', function (): void {
     app()->setBasePath(dirname(__DIR__, 2));
 
-    expect(data_get(buildMessage(messageException()), 'blocks.2.fields.0.text'))
-        ->toStartWith("*Location*\n`tests/Feature/MessageBuilderTest.php:");
+    expect(data_get(buildMessage(messageException()), 'blocks.1.text.text'))
+        ->toContain("\n`tests/Feature/MessageBuilderTest.php:");
 });
 
 it('adds at most ten application frames of the stack trace', function (): void {

@@ -37,9 +37,18 @@ final readonly class MessageBuilder
                 'type' => 'header',
                 'text' => ['type' => 'plain_text', 'text' => Str::limit('🚨 '.$this->title(), 140), 'emoji' => true],
             ],
-            $this->section(mb_ltrim($mention.' *'.$this->escape($class).'*')."\n".$this->escape($message)),
-            ['type' => 'section', 'fields' => $this->fields($exception)],
+            $this->section(
+                mb_ltrim($mention.' *'.$this->escape($class).'*')
+                ."\n".$this->escape($message)
+                ."\n`".$this->escape($this->location($exception)).'`',
+            ),
         ];
+
+        $fields = $this->fields();
+
+        if ($fields !== []) {
+            $blocks[] = ['type' => 'section', 'fields' => $fields];
+        }
 
         $trace = $this->trace($exception);
 
@@ -56,17 +65,20 @@ final readonly class MessageBuilder
     /**
      * @return list<array{type: string, text: string}>
      */
-    private function fields(Throwable $exception): array
+    private function fields(): array
     {
-        $location = $this->relativePath($exception->getFile()).':'.$exception->getLine();
-
-        $fields = [$this->field('Location', '`'.$this->escape($location).'`')];
+        $fields = [];
 
         foreach ($this->context->resolve() as $label => $value) {
             $fields[] = $this->field($label, $this->escape(Str::limit($value, 1900)));
         }
 
         return array_slice($fields, 0, self::MAX_FIELDS);
+    }
+
+    private function location(Throwable $exception): string
+    {
+        return $this->relativePath($exception->getFile()).':'.$exception->getLine();
     }
 
     private function trace(Throwable $exception): string
