@@ -32,7 +32,7 @@ final readonly class MessageBuilder
         $blocks = [
             [
                 'type' => 'header',
-                'text' => ['type' => 'plain_text', 'text' => Str::limit('🪲 '.mb_scrub($this->title(), 'UTF-8'), 140), 'emoji' => true],
+                'text' => ['type' => 'plain_text', 'text' => Str::limit(mb_scrub($this->header(), 'UTF-8'), 140), 'emoji' => true],
             ],
             $this->section(
                 '*'.$class.'*'
@@ -102,6 +102,13 @@ final readonly class MessageBuilder
     private function section(string $text): array
     {
         return ['type' => 'section', 'text' => ['type' => 'mrkdwn', 'text' => $text]];
+    }
+
+    private function header(): string
+    {
+        $icon = $this->config->string('slack-errors.icon');
+
+        return $icon !== '' ? $icon.' '.$this->title() : $this->title();
     }
 
     private function title(): string

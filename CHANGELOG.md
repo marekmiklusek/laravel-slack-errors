@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0] - 2026-11-11
+## [1.0.0] - 2026-11-12
 
 ### Added
 
@@ -27,7 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Sending pauses for a minute while Slack is unreachable, rate limits or fails, so requests and
   workers never wait for it during an outage.
 - Environment filter with wildcard support, ignored exception classes and a master switch.
-- Optional mention prepended to every message and a configurable bar color.
+- Optional mention prepended to every message, a configurable icon and bar color.
 - Recursion guard: a failing Slack call never breaks or re-enters error reporting.
 - `slack-errors:test` command to verify the webhook, without ever printing the webhook URL.
 

@@ -12,6 +12,8 @@ final readonly class StackTrace
 {
     private const array ENTRY_POINTS = ['public/index.php', 'artisan'];
 
+    private const string SERIALIZED_CLOSURE = 'laravel-serializable-closure://';
+
     public function __construct(
         private Application $app,
     ) {}
@@ -54,11 +56,15 @@ final readonly class StackTrace
             }
         }
 
-        return $this->location($exception);
+        return $this->relativePath($file).':'.$exception->getLine();
     }
 
     public function location(Throwable $exception): string
     {
+        if (str_starts_with($exception->getFile(), self::SERIALIZED_CLOSURE)) {
+            return '(queued closure)';
+        }
+
         return $this->relativePath($exception->getFile()).':'.$exception->getLine();
     }
 

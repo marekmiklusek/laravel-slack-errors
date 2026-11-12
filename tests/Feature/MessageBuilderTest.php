@@ -31,20 +31,20 @@ it('builds the fallback text and header', function (): void {
         ->and($payload['attachments'][0]['fallback'])->toBe('Shop | testing: RuntimeException: Order &lt;42&gt; &amp; co')
         ->and($payload['attachments'][0]['blocks'][0])->toBe([
             'type' => 'header',
-            'text' => ['type' => 'plain_text', 'text' => '🪲 Shop | testing', 'emoji' => true],
+            'text' => ['type' => 'plain_text', 'text' => '🙈 Shop | testing', 'emoji' => true],
         ]);
 });
 
 it('falls back to a default app name', function (): void {
     config(['app.name' => '']);
 
-    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Laravel | testing');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🙈 Laravel | testing');
 });
 
 it('leaves the environment out of the header when it is unknown', function (): void {
     config(['app.name' => 'Shop', 'app.env' => '']);
 
-    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🪲 Shop');
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🙈 Shop');
 });
 
 it('describes the exception with escaped mrkdwn', function (): void {
@@ -144,4 +144,28 @@ it('truncates after escaping so the limits hold', function (): void {
     assert(is_string($text));
 
     expect(mb_strlen(explode("\n", $text)[2]))->toBeLessThanOrEqual(503);
+});
+
+it('uses the configured icon', function (): void {
+    config(['app.name' => 'Shop', 'slack-errors.icon' => '🩹']);
+
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('🩹 Shop | testing');
+});
+
+it('leaves the icon out when none is configured', function (): void {
+    config(['app.name' => 'Shop', 'slack-errors.icon' => '']);
+
+    expect(data_get(buildMessage(messageException()), 'attachments.0.blocks.0.text.text'))->toBe('Shop | testing');
+});
+
+it('shows a queued closure without its serialized code', function (): void {
+    $exception = new RuntimeException('Queued closure job failed');
+
+    new ReflectionProperty(Exception::class, 'file')->setValue($exception, "laravel-serializable-closure://function (): void {\n    throw new RuntimeException('Queued closure job failed');\n}");
+    new ReflectionProperty(Exception::class, 'line')->setValue($exception, 3);
+
+    $text = data_get(buildMessage($exception), 'attachments.0.blocks.1.text.text');
+
+    expect($text)->toEndWith("\n\n`(queued closure)`")
+        ->not->toContain('laravel-serializable-closure');
 });

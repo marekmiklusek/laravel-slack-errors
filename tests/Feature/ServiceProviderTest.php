@@ -30,6 +30,7 @@ it('merges the package configuration', function (): void {
         ->and(config()->integer('slack-errors.timeout'))->toBe(3)
         ->and(config()->string('slack-errors.mention'))->toBe('')
         ->and(config()->integer('slack-errors.throttle'))->toBe(10)
+        ->and(config()->string('slack-errors.icon'))->toBe('🙈')
         ->and(config()->string('slack-errors.color'))->toBe('#ECB22E')
         ->and(config()->array('slack-errors.ignore'))->toBe([]);
 });

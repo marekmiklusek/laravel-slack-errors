@@ -162,3 +162,18 @@ it('treats slack as available when the cache is unavailable', function (): void 
 
     expect($throttle->slackIsDown())->toBeFalse();
 });
+
+it('tells apart different queued closures', function (): void {
+    $throttle = app(Throttle::class);
+
+    $closureException = function (string $code): RuntimeException {
+        $exception = new RuntimeException('Queued closure job failed');
+
+        new ReflectionProperty(Exception::class, 'file')->setValue($exception, 'laravel-serializable-closure://'.$code);
+
+        return $exception;
+    };
+
+    expect($throttle->attempt($closureException('function () { importOrders(); }')))->toBeTrue()
+        ->and($throttle->attempt($closureException('function () { sendInvoices(); }')))->toBeTrue();
+});

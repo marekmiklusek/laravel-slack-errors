@@ -55,20 +55,18 @@ the channel.
 
 ## Configuration
 
-Everything is configurable through `.env`:
+Sensitive and environment-specific settings live in `.env`:
 
 | Variable | Default | Description |
 | --- | --- | --- |
 | `SLACK_ERRORS_WEBHOOK_URL` | | Incoming webhook URL. Nothing is sent while it is empty. |
 | `SLACK_ERRORS_ENABLED` | `true` | Master switch. |
 | `SLACK_ERRORS_ENVIRONMENTS` | `production` | Comma separated environments, wildcards allowed (`*` for all). |
-| `SLACK_ERRORS_MENTION` | | Prepended to every message, e.g. `<!channel>`, `<!here>` or `<@U012AB3CD>`. |
-| `SLACK_ERRORS_TIMEOUT` | `3` | Seconds to wait for Slack. |
-| `SLACK_ERRORS_THROTTLE` | `10` | Minutes during which the same exception is sent only once. `0` disables it. |
 | `SLACK_ERRORS_CACHE_STORE` | `file` | Cache store used by the throttle. The local `file` store keeps working when Redis or the database is down. |
 
-To change the bar color or ignore specific exception classes (subclasses included), publish
-the config:
+Everything else lives in the config file. Publish it to change the throttle window, the
+timeout, a mention (`<!channel>`, `<!here>` or `<@U012AB3CD>`), the icon, the bar color or the ignored
+exception classes (subclasses included):
 
 ```bash
 php artisan vendor:publish --tag=slack-errors-config
@@ -76,7 +74,15 @@ php artisan vendor:publish --tag=slack-errors-config
 
 ```php
 // config/slack-errors.php
+'mention' => '',
+
+'icon' => '🙈',
+
 'color' => '#ECB22E',
+
+'timeout' => 3,
+
+'throttle' => 10,
 
 'ignore' => [
     Illuminate\Validation\ValidationException::class,
@@ -99,7 +105,7 @@ out of Slack, enable binding masking on your database connection:
 
 | Field | Value |
 | --- | --- |
-| Header | App name and environment |
+| Header | Icon, app name and environment |
 | Exception | Class and message |
 | Location | File and line, relative to the project root |
 | URL | HTTP method and route template for web requests (`/reset-password/{token}`), without the query string. Only the domain when the error happens before routing |
@@ -121,6 +127,13 @@ out of Slack, enable binding masking on your database connection:
   code. The message is left out on purpose, so IDs in it do not bypass the throttle.
   A cache that is unavailable or keeps nothing (the `null` driver) never holds a
   notification back.
+- The throttle lives in its own cache store (`file` by default), so `php artisan cache:clear`
+  does not reset it. Clear that store instead, for example after fixing an error you want to
+  test again:
+
+  ```bash
+  php artisan cache:clear file
+  ```
 - When Slack is unreachable, rate limits or fails, sending pauses for a minute, so
   requests and workers never wait for it during an outage.
 - Any failure while talking to Slack is swallowed, and an exception thrown while
