@@ -7,10 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-16
+
 ### Removed
 
 - The environment filter (`SLACK_ERRORS_ENVIRONMENTS`, `environments` config). Notifications are sent from
   every environment that has `SLACK_ERRORS_WEBHOOK_URL` set and `SLACK_ERRORS_ENABLED` not set to `false`.
+- The `SLACK_ERRORS_MENTION`, `SLACK_ERRORS_TIMEOUT` and `SLACK_ERRORS_THROTTLE` variables. Set `mention`,
+  `timeout` and `throttle` in the published config file instead.
+
+### Fixed
+
+- An exception thrown in a queued closure shows `(queued closure)` as its location instead of the serialized
+  closure code.
 
 ## [1.0.0] - 2026-11-12
 
@@ -36,5 +45,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Recursion guard: a failing Slack call never breaks or re-enters error reporting.
 - `slack-errors:test` command to verify the webhook, without ever printing the webhook URL.
 
-[Unreleased]: https://github.com/marekmiklusek/laravel-slack-errors/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/marekmiklusek/laravel-slack-errors/compare/v2.0.0...HEAD
+[2.0.0]: https://github.com/marekmiklusek/laravel-slack-errors/compare/v1.0.0...v2.0.0
 [1.0.0]: https://github.com/marekmiklusek/laravel-slack-errors/releases/tag/v1.0.0
