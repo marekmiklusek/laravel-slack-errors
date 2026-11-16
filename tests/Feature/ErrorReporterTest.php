@@ -40,24 +40,6 @@ it('does not send without a webhook url', function (): void {
     Http::assertNothingSent();
 });
 
-it('does not send outside the configured environments', function (): void {
-    Http::fake();
-    config(['slack-errors.environments' => ['production', 'staging']]);
-
-    app(ErrorReporter::class)->report(new RuntimeException('Payment failed'));
-
-    Http::assertNothingSent();
-});
-
-it('sends from every environment with a wildcard', function (): void {
-    Http::fake();
-    config(['slack-errors.environments' => ['*']]);
-
-    app(ErrorReporter::class)->report(new RuntimeException('Payment failed'));
-
-    Http::assertSentCount(1);
-});
-
 it('does not send ignored exceptions or their subclasses', function (): void {
     Http::fake();
     config(['slack-errors.ignore' => [RuntimeException::class]]);

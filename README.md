@@ -17,7 +17,6 @@ Install the package, add a webhook URL to `.env` and you are done. No changes to
 - ⚡ **Zero config**: hooks into the framework exception handler automatically
 - 🧱 **Block Kit messages**: exception, location, URL, command or queue job, user and stack trace
 - 🔁 **Throttling**: the same exception is sent once per 10 minutes, so a loop never floods the channel
-- 🌍 **Environment filter** with wildcard support, `production` only by default
 - 🙈 **Ignore list** on top of your application's own `dontReport`
 - 🛡️ **Fail-safe**: a failing Slack call never breaks or re-enters your error handling
 - 🔍 **No side effects**: the user is reported only if the app already loaded it, no extra queries
@@ -47,11 +46,12 @@ Check the setup:
 php artisan slack-errors:test
 ```
 
-The command sends a test message regardless of the environment filter and prints
+The command sends a test message even when sending is disabled and prints
 Slack's error if the webhook does not work.
 
-That's it. Every exception your application reports in `production` now lands in
-the channel.
+That's it. Every exception your application reports now lands in the channel.
+Sending follows the environment's `.env`: leave the webhook URL out (or set
+`SLACK_ERRORS_ENABLED=false`) wherever you don't want notifications.
 
 ## Configuration
 
@@ -61,7 +61,6 @@ Sensitive and environment-specific settings live in `.env`:
 | --- | --- | --- |
 | `SLACK_ERRORS_WEBHOOK_URL` | | Incoming webhook URL. Nothing is sent while it is empty. |
 | `SLACK_ERRORS_ENABLED` | `true` | Master switch. |
-| `SLACK_ERRORS_ENVIRONMENTS` | `production` | Comma separated environments, wildcards allowed (`*` for all). |
 | `SLACK_ERRORS_CACHE_STORE` | `file` | Cache store used by the throttle. The local `file` store keeps working when Redis or the database is down. |
 
 Everything else lives in the config file. Publish it to change the throttle window, the

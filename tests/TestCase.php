@@ -39,7 +39,6 @@ abstract class TestCase extends Orchestra
     {
         $app->make(Repository::class)->set([
             'slack-errors.webhook_url' => self::WEBHOOK_URL,
-            'slack-errors.environments' => ['testing'],
             'logging.default' => 'null',
             'cache.default' => 'array',
             'slack-errors.cache_store' => 'array',

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed
+
+- The environment filter (`SLACK_ERRORS_ENVIRONMENTS`, `environments` config). Notifications are sent from
+  every environment that has `SLACK_ERRORS_WEBHOOK_URL` set and `SLACK_ERRORS_ENABLED` not set to `false`.
+
 ## [1.0.0] - 2026-11-12
 
 ### Added

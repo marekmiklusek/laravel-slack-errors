@@ -29,21 +29,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | Environments
-    |--------------------------------------------------------------------------
-    |
-    | Comma separated list of environments that send notifications.
-    | Wildcards are supported, so "*" sends from every environment.
-    |
-    */
-
-    'environments' => array_values(array_filter(array_map(
-        mb_trim(...),
-        explode(',', (string) env('SLACK_ERRORS_ENVIRONMENTS', 'production')),
-    ))),
-
-    /*
-    |--------------------------------------------------------------------------
     | Mention
     |--------------------------------------------------------------------------
     |

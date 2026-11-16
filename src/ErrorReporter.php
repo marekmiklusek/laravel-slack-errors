@@ -8,14 +8,12 @@ use Throwable;
 use Illuminate\Config\Repository;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\ConnectionException;
-use Illuminate\Contracts\Foundation\Application;
 
 final class ErrorReporter
 {
     private bool $reporting = false;
 
     public function __construct(
-        private readonly Application $app,
         private readonly Repository $config,
         private readonly MessageBuilder $builder,
         private readonly SlackWebhook $webhook,
@@ -73,7 +71,6 @@ final class ErrorReporter
     private function shouldReport(Throwable $exception): bool
     {
         return $this->config->boolean('slack-errors.enabled')
-            && $this->app->environment($this->config->array('slack-errors.environments')) === true
             && ! $this->isIgnored($exception);
     }
 

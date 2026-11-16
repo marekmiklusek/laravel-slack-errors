@@ -7,9 +7,9 @@ use Illuminate\Http\Client\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Artisan;
 
-it('sends a test notification regardless of the environment filter', function (): void {
+it('sends a test notification even when disabled', function (): void {
     Http::fake();
-    config(['slack-errors.enabled' => false, 'slack-errors.environments' => ['production']]);
+    config(['slack-errors.enabled' => false]);
 
     expect(Artisan::call('slack-errors:test'))->toBe(0)
         ->and(Artisan::output())->toContain('Test notification sent');
